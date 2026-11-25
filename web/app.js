@@ -10,6 +10,9 @@ const NETWORKS = {
     rpc: "https://rpc.onyx.testnets.gno.land:443",
     gnoweb: "https://onyx.testnets.gno.land",
     pkg: `gno.land/r/${REALM_OWNER}/tavernwagers/v5`,
+    // Newest first. The testnet enables new packages after a delay, so the
+    // app uses the newest version that is already live.
+    versions: ["v5", "v4"],
   },
   demo: {
     label: "Demo (sample data)",
@@ -61,7 +64,32 @@ function ensureDemo() {
   });
 }
 
+// pickVersion points the testnet config at the newest live realm version.
+let versionPicked = false;
+async function pickVersion() {
+  const n = net();
+  if (versionPicked || !n.versions) return;
+  for (const v of n.versions) {
+    const path = `gno.land/r/${REALM_OWNER}/tavernwagers/${v}`;
+    try {
+      const res = await fetch(n.rpc, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "abci_query", params: { path: "vm/qpkgmeta_json", data: btoa(path) } }),
+      }).then((r) => r.json());
+      const d = res?.result?.response?.ResponseBase?.Data;
+      if (d && JSON.parse(atob(d)).status === "live") {
+        n.pkg = path;
+        break;
+      }
+    } catch (_) { /* fall through to the next version */ }
+  }
+  versionPicked = true;
+  renderTop();
+}
+
 async function qeval(expr) {
+  await pickVersion();
   if (net().demo) {
     await ensureDemo();
     return window.DEMO.query(expr);
@@ -203,7 +231,7 @@ function renderTop() {
   if (banner) banner.hidden = !net().demo;
   renderBalance();
   btn.classList.toggle("ghost", !!state.account);
-  $("#realm-link").href = `${net().gnoweb}/r/${REALM_OWNER}/tavernwagers/v5`;
+  $("#realm-link").href = `${net().gnoweb}/r/${net().pkg.replace("gno.land/r/", "")}`;
 }
 
 // ---------------------------------------------------------------------------
