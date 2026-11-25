@@ -75,7 +75,7 @@ func renderHome() string {
 		}
 		t := v.(*Table)
 		sb.WriteString("| [" + escape(t.Name) + "](" + page("table/"+strconv.Itoa(t.ID)) + ") | " +
-			strconv.Itoa(len(t.Members)) + " | " + strconv.Itoa(len(t.BetIDs)) + " | " + who(t, t.Owner) + " |\n")
+			strconv.Itoa(len(t.Members)) + " | " + strconv.Itoa(len(t.BetIDs)+len(t.PoolIDs)) + " | " + who(t, t.Owner) + " |\n")
 		return false
 	})
 	return sb.String()
@@ -195,7 +195,9 @@ func renderBet(b *Bet) string {
 		sb.WriteString("### Actions\n\n")
 		sb.WriteString("- Player B: [✅ Accept and lock " + gnot(b.Stake+b.Bond, false) + "](" +
 			callSend("AcceptBet", send, "betID", id) + ")\n")
-		sb.WriteString("- Player B: [🙅 Decline](" + call("DeclineBet", "betID", id) + ")\n")
+		if b.PlayerB != "" {
+			sb.WriteString("- Player B: [🙅 Decline](" + call("DeclineBet", "betID", id) + ")\n")
+		}
 		sb.WriteString("- Player A: [❌ Cancel and refund](" + call("CancelBet", "betID", id) + ")\n")
 	case StatusLive:
 		sb.WriteString("### Report the result\n\n")
@@ -224,6 +226,9 @@ func renderBet(b *Bet) string {
 	if b.Status == StatusOpen {
 		preview := t.judgesFor(b.PlayerA, b.PlayerB)
 		sb.WriteString("\n### ⚖️ Judges if accepted\n\n")
+		if b.PlayerB == "" {
+			sb.WriteString("_Everyone below except whoever accepts._\n\n")
+		}
 		if len(preview) == 0 {
 			sb.WriteString("_Nobody else is at this table, so a disagreement would be refunded._\n")
 		}
