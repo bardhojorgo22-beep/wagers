@@ -581,3 +581,91 @@ func TestPoolValidationAndCancel(cur realm, t *testing.T) {
 	uassert.Equal(t, b0+stake+bond, balance(bob))
 	uassert.True(t, strings.Contains(PoolJSON(pid), `"status":"cancelled"`), "pool json")
 }
+
+func TestPoolNoShowEscalateAndExpire(cur realm, t *testing.T) {
+	testing.IssueCoins(pkgAddr, chain.Coins{{"ugnot", 100_000_000}})
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(nil)
+	tid := CreateTable(cross(cur), "No-show table", "Alice")
+	AddMember(cross(cur), tid, bob, "Bob")
+	AddMember(cross(cur), tid, carol, "Carol")
+	AddMember(cross(cur), tid, judge1, "J1")
+	AddMember(cross(cur), tid, judge2, "J2")
+	AddMember(cross(cur), tid, judge3, "J3")
+
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	pid := CreatePool(cross(cur), tid, "Mario Kart", "Bob,Carol", stake, "100", false)
+	for _, who := range []address{bob, carol} {
+		testing.SetRealm(testing.NewUserRealm(who))
+		testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+		JoinPool(cross(cur), pid)
+	}
+
+	testing.SetOriginSend(nil)
+	testing.SetRealm(testing.NewUserRealm(alice))
+	ReportPool(cross(cur), pid, "Alice")
+	uassert.AbortsWithMessage(t, cur, "players still have time to report", func() { EscalatePool(cross(cur), pid) })
+	testing.SetRealm(testing.NewUserRealm(bob))
+	ReportPool(cross(cur), pid, "Alice")
+	// Carol never reports.
+	testing.SkipHeights(20_000)
+	testing.SetRealm(testing.NewUserRealm(alice))
+	EscalatePool(cross(cur), pid)
+	uassert.Equal(t, "disputed", GetPoolStatus(pid))
+
+	// Judges split 1-1-1: no majority, then the deadline passes.
+	testing.SetRealm(testing.NewUserRealm(judge1))
+	VotePool(cross(cur), pid, "Alice")
+	testing.SetRealm(testing.NewUserRealm(judge2))
+	VotePool(cross(cur), pid, "Bob")
+	testing.SetRealm(testing.NewUserRealm(judge3))
+	VotePool(cross(cur), pid, "Carol")
+	uassert.Equal(t, "disputed", GetPoolStatus(pid))
+
+	uassert.AbortsWithMessage(t, cur, "voting is still open", func() { ExpirePool(cross(cur), pid) })
+	testing.SkipHeights(50_000)
+	c0 := balance(carol)
+	testing.SetRealm(testing.NewUserRealm(outside))
+	ExpirePool(cross(cur), pid)
+	uassert.Equal(t, "refunded", GetPoolStatus(pid))
+	uassert.Equal(t, c0+stake+bond, balance(carol))
+}
+
+func TestPoolNoShowLosesBond(cur realm, t *testing.T) {
+	testing.IssueCoins(pkgAddr, chain.Coins{{"ugnot", 100_000_000}})
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(nil)
+	tid := CreateTable(cross(cur), "No-show bond table", "Alice")
+	AddMember(cross(cur), tid, bob, "Bob")
+	AddMember(cross(cur), tid, carol, "Carol")
+	AddMember(cross(cur), tid, judge1, "J1")
+	AddMember(cross(cur), tid, judge2, "J2")
+	AddMember(cross(cur), tid, judge3, "J3")
+
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	pid := CreatePool(cross(cur), tid, "Smash", "Bob,Carol", stake, "100", false)
+	for _, who := range []address{bob, carol} {
+		testing.SetRealm(testing.NewUserRealm(who))
+		testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+		JoinPool(cross(cur), pid)
+	}
+	testing.SetOriginSend(nil)
+	for _, who := range []address{alice, bob} {
+		testing.SetRealm(testing.NewUserRealm(who))
+		ReportPool(cross(cur), pid, "Bob")
+	}
+	testing.SkipHeights(20_000)
+	testing.SetRealm(testing.NewUserRealm(bob))
+	EscalatePool(cross(cur), pid)
+
+	c0 := balance(carol)
+	testing.SetRealm(testing.NewUserRealm(judge1))
+	VotePool(cross(cur), pid, "Bob")
+	testing.SetRealm(testing.NewUserRealm(judge2))
+	VotePool(cross(cur), pid, "Bob")
+	uassert.Equal(t, "settled", GetPoolStatus(pid))
+	uassert.Equal(t, c0, balance(carol)) // the no-show forfeits their bond
+	uassert.True(t, strings.Contains(Render("table/"+itoa(tid)), "🚩 1"), "no-show is flagged")
+}
