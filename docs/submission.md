@@ -10,9 +10,11 @@ Friendly bets break down in three ways: the loser doesn't pay, someone has to ho
 
 Friends form an invite-only table. Two players lock the same stake in the realm before the game, plus a 10% honesty bond. After the game, both report the result. If they agree, the realm pays out instantly. If they disagree, every other table member becomes a judge: judges have no money in the bet, so they have no reason to lie, and a strict majority settles it. The player whose report loses the vote forfeits their bond (half to the honest player, half to the judges), and gets a permanent flag on the table's leaderboard. If judges can't reach a majority in 48 hours, everyone is refunded. The realm takes no cut: every coin that goes in comes back out.
 
-Everything renders on gnoweb: tables with leaderboards, bet pages with reports, votes and a payout breakdown, and pre-filled action links for every step.
+Judges are fixed when a bet is accepted, so nobody can add friends later to swing a vote. Players challenge each other by nickname, get a rematch button and a head-to-head record.
 
-**Gno component:** the realm `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2` (escrow, dispute voting, bond settlement, leaderboards, gnoweb rendering). 9 unit tests cover agreed results, disputes, draws, expired votes, no-shows, cancellations, validation, nicknames and rendering, and every settlement test checks that coins out equal coins in.
+Two ways to use it: a web app (Adena wallet) that only shows the buttons that are your move, and the realm's own gnoweb pages, where every step is a pre-filled transaction link.
+
+**Gno component:** the realm `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2` (escrow, dispute voting, bond settlement, leaderboards, gnoweb rendering, JSON views for the web app). 11 unit tests cover agreed results, disputes, draws, expired votes, no-shows, cancellations, validation, nicknames, judge snapshots, JSON and rendering, and every settlement test checks that coins out equal coins in.
 
 **Links:**
 - Web app: https://tavern-wagers.vercel.app
