@@ -118,7 +118,7 @@ async function call(func, args, sendUgnot = 0) {
       return false;
     }
     toast("Done ✓", "ok");
-    setTimeout(route, 1500);
+    setTimeout(() => { route(); renderBalance(); }, 1500);
     return true;
   } catch (e) {
     toast(friendlyError(e.message || String(e)), "err");
@@ -167,6 +167,33 @@ async function connect() {
   }
 }
 
+async function balance(addr) {
+  if (net().demo || !addr) return null;
+  try {
+    const res = await fetch(net().rpc, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "abci_query", params: { path: `bank/balances/${addr}`, data: "" } }),
+    }).then((r) => r.json());
+    const raw = atob(res?.result?.response?.ResponseBase?.Data || "");
+    const m = raw.match(/(\d+)ugnot/);
+    return m ? parseInt(m[1], 10) : 0;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function renderBalance() {
+  const el = $("#balance");
+  if (!el) return;
+  const b = await balance(state.account);
+  if (b === null) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = b < UGNOT
+    ? `<a href="https://faucet.gno.land" target="_blank" rel="noopener" title="Get free testnet GNOT">${gnot(b)} · get GNOT ↗</a>`
+    : gnot(b);
+}
+
 function renderTop() {
   const btn = $("#connect");
   btn.textContent = net().demo
@@ -174,6 +201,7 @@ function renderTop() {
     : state.account ? short(state.account) : "Connect Adena";
   const banner = $("#demo-banner");
   if (banner) banner.hidden = !net().demo;
+  renderBalance();
   btn.classList.toggle("ghost", !!state.account);
   $("#realm-link").href = `${net().gnoweb}/r/${REALM_OWNER}/tavernwagers/v5`;
 }

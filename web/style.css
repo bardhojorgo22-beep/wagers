@@ -151,3 +151,6 @@ tr:last-child td { border-bottom: 0; }
 .feed .ev:last-child { border-bottom: 0; }
 .yourmove .item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .yourmove .item:last-child { border-bottom: 0; }
+
+.bal { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) { .bal { display: none; } }
