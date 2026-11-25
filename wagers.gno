@@ -88,6 +88,7 @@ type Table struct {
 	Stats   *avl.Tree // address -> *Stats
 	Names   *avl.Tree // address -> nickname
 	BetIDs  []int
+	PoolIDs []int
 	Created time.Time
 }
 

@@ -29,6 +29,11 @@ func Render(path string) string {
 					return renderBet(v.(*Bet))
 				}
 				return "# Bet not found\n\n[Back home](" + home() + ")"
+			case "pool":
+				if v := pools.Get(parts[1]); v != nil {
+					return renderPool(v.(*Pool))
+				}
+				return "# Group bet not found\n\n[Back home](" + home() + ")"
 			}
 		}
 	}
@@ -79,7 +84,8 @@ func renderTable(t *Table) string {
 	sb.WriteString("[← All tables](" + home() + ")\n\n")
 	sb.WriteString("# 🍺 " + escape(t.Name) + "\n\n")
 	sb.WriteString("Table #" + id + " · owner " + who(t, t.Owner) + " · " + strconv.Itoa(len(t.Members)) + " members\n\n")
-	sb.WriteString("[🎲 New bet](" + call("CreateBet", "tableID", id) + ") · ")
+	sb.WriteString("[🎲 New 1v1 bet](" + call("CreateBet", "tableID", id) + ") · ")
+	sb.WriteString("[🃏 New group bet](" + call("CreatePool", "tableID", id, "payout", "100") + ") · ")
 	sb.WriteString("[👋 Add member (owner only)](" + call("AddMember", "tableID", id) + ") · ")
 	sb.WriteString("[✏️ Change your nickname](" + call("SetNickname", "tableID", id) + ")\n\n")
 
@@ -107,6 +113,15 @@ func renderTable(t *Table) string {
 		sb.WriteString("| " + strconv.Itoa(i+1) + " | " + who(t, r.addr) + " | " + gnot(r.s.Net, true) + " | " +
 			strconv.Itoa(r.s.Wins) + " | " + strconv.Itoa(r.s.Losses) + " | " + strconv.Itoa(r.s.Draws) + " | " +
 			liar + " | " + strconv.Itoa(r.s.Judged) + " | [🎲 Challenge](" + challenge(t, r.addr) + ") |\n")
+	}
+
+	if len(t.PoolIDs) > 0 {
+		sb.WriteString("\n## 🃏 Group bets\n\n| Game | Players | Stake | Status |\n|---|---|---|---|\n")
+		for i := len(t.PoolIDs) - 1; i >= 0 && i >= len(t.PoolIDs)-30; i-- {
+			p := mustPool(t.PoolIDs[i])
+			sb.WriteString("| [" + escape(p.Title) + "](" + page("pool/"+strconv.Itoa(p.ID)) + ") | " +
+				strconv.Itoa(len(p.Players)) + " | " + gnot(p.Stake, false) + " | " + poolBadge(t, p) + " |\n")
+		}
 	}
 
 	sb.WriteString("\n## 🎲 Bets\n\n")
@@ -224,6 +239,106 @@ func renderBet(b *Bet) string {
 type row struct {
 	addr address
 	s    *Stats
+}
+
+func renderPool(p *Pool) string {
+	var sb strings.Builder
+	id := strconv.Itoa(p.ID)
+	t := mustTable(p.TableID)
+	sb.WriteString("[← " + escape(t.Name) + "](" + page("table/"+strconv.Itoa(t.ID)) + ")\n\n")
+	sb.WriteString("# 🃏 " + escape(p.Title) + "\n\n")
+	sb.WriteString("**Status: " + poolBadge(t, p) + "**\n\n")
+	n := int64(len(p.Players))
+	sb.WriteString("Stake **" + gnot(p.Stake, false) + "** each · bond " + gnot(p.Bond, false) + " each · pot **" + gnot(n*p.Stake, false) + "**\n\n")
+
+	sb.WriteString("Payout: ")
+	for i, sh := range p.Shares {
+		if i > 0 {
+			sb.WriteString(" · ")
+		}
+		sb.WriteString(placeName(i) + " " + strconv.FormatInt(sh, 10) + "%")
+	}
+	sb.WriteString("\n\n## Players\n\n| Player | Joined | Reported |\n|---|---|---|\n")
+	for _, a := range p.Players {
+		joined := "⏳"
+		if p.Joined.Has(a.String()) {
+			joined = "✅"
+		}
+		rep := "—"
+		if v, ok := p.Reports.Get(a.String()).(string); ok {
+			rep = rankingText(t, p, v)
+		}
+		sb.WriteString("| " + who(t, a) + " | " + joined + " | " + rep + " |\n")
+	}
+
+	switch p.Status {
+	case StatusOpen:
+		sb.WriteString("\n[✅ Join and lock " + gnot(p.Stake+p.Bond, false) + "](" +
+			callSend("JoinPool", strconv.FormatInt(p.Stake+p.Bond, 10)+"ugnot", "poolID", id) + ") · ")
+		sb.WriteString("[❌ Cancel (creator)](" + call("CancelPool", "poolID", id) + ")\n")
+	case StatusLive:
+		sb.WriteString("\nPlayers: [📝 Report the finishing order](" + call("ReportPool", "poolID", id) + ") ")
+		sb.WriteString("_(" + strconv.Itoa(len(p.Shares)) + " name(s), best first, e.g. `" + exampleRanking(t, p) + "`)_\n")
+	case StatusDisputed:
+		sb.WriteString("\n### ⚖️ Judges are voting\n\nPlayers disagree. Judges: [vote the order](" + call("VotePool", "poolID", id) + ") · ")
+		sb.WriteString("voting closes " + p.Deadline.UTC().Format(time.RFC822) + ".\n")
+	}
+
+	if len(p.Judges) > 0 {
+		sb.WriteString("\n### ⚖️ Judges\n\n_The table members who didn't play. Only used if players disagree._\n\n")
+		for _, j := range p.Judges {
+			vote := "not voted"
+			if v, ok := p.Votes.Get(j.String()).(string); ok {
+				vote = rankingText(t, p, v)
+			}
+			sb.WriteString("- " + who(t, j) + ": " + vote + "\n")
+		}
+	}
+	if len(p.Payouts) > 0 {
+		sb.WriteString("\n### 💸 Payouts\n\n| To | Amount | Why |\n|---|---|---|\n")
+		for _, x := range p.Payouts {
+			sb.WriteString("| " + who(t, x.To) + " | " + gnot(x.Amount, false) + " | " + x.Why + " |\n")
+		}
+	}
+	return sb.String()
+}
+
+func rankingText(t *Table, p *Pool, r string) string {
+	var parts []string
+	for i, a := range p.rankingAddrs(r) {
+		parts = append(parts, placeName(i)+" "+plain(t, a))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func exampleRanking(t *Table, p *Pool) string {
+	var names []string
+	for i := 0; i < len(p.Shares) && i < len(p.Players); i++ {
+		names = append(names, nameOrAddr(t, p.Players[i]))
+	}
+	return strings.Join(names, ",")
+}
+
+func poolBadge(t *Table, p *Pool) string {
+	switch p.Status {
+	case StatusOpen:
+		return "🟡 " + strconv.Itoa(p.Joined.Size()) + "/" + strconv.Itoa(len(p.Players)) + " joined"
+	case StatusLive:
+		return "🟢 live"
+	case StatusDisputed:
+		return "⚖️ disputed"
+	case StatusSettled:
+		order := p.rankingAddrs(p.Final)
+		if len(order) > 0 {
+			return "✅ " + plain(t, order[0]) + " won"
+		}
+		return "✅ settled"
+	case StatusCancelled:
+		return "❌ cancelled"
+	case StatusRefunded:
+		return "↩️ refunded"
+	}
+	return p.Status.String()
 }
 
 // nextStep tells visitors what the bet is waiting for.

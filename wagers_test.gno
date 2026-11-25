@@ -413,3 +413,144 @@ func TestRender(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(Render("bet/999"), "Bet not found"), "missing bet")
 }
 
+
+// ---------------------------------------------------------------------------
+// Group bets
+
+var (
+	carol = testutils.TestAddress("carol")
+	dave  = testutils.TestAddress("dave")
+)
+
+func TestPoolAgreedWinnerTakesAll(cur realm, t *testing.T) {
+	testing.IssueCoins(pkgAddr, chain.Coins{{"ugnot", 100_000_000}})
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(nil)
+	tid := CreateTable(cross(cur), "Poker night", "Alice")
+	AddMember(cross(cur), tid, bob, "Bob")
+	AddMember(cross(cur), tid, carol, "Carol")
+	AddMember(cross(cur), tid, dave, "Dave")
+
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	pid := CreatePool(cross(cur), tid, "Texas hold'em", "Bob, carol,Dave", stake, "100")
+	uassert.Equal(t, "open", GetPoolStatus(pid))
+
+	testing.SetRealm(testing.NewUserRealm(bob))
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	JoinPool(cross(cur), pid)
+	testing.SetRealm(testing.NewUserRealm(carol))
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	JoinPool(cross(cur), pid)
+	uassert.Equal(t, "open", GetPoolStatus(pid))
+	testing.SetRealm(testing.NewUserRealm(dave))
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	JoinPool(cross(cur), pid)
+	uassert.Equal(t, "live", GetPoolStatus(pid))
+
+	a0, b0 := balance(alice), balance(bob)
+	testing.SetOriginSend(nil)
+	for _, who := range []address{alice, bob, carol} {
+		testing.SetRealm(testing.NewUserRealm(who))
+		ReportPool(cross(cur), pid, "alice")
+	}
+	uassert.Equal(t, "live", GetPoolStatus(pid)) // dave hasn't reported
+	testing.SetRealm(testing.NewUserRealm(dave))
+	ReportPool(cross(cur), pid, "Alice")
+	uassert.Equal(t, "settled", GetPoolStatus(pid))
+
+	uassert.Equal(t, a0+4*stake+bond, balance(alice))
+	uassert.Equal(t, b0+bond, balance(bob))
+	uassert.Equal(t, 3*stake, GetNet(tid, alice))
+	uassert.Equal(t, -stake, GetNet(tid, bob))
+	uassert.True(t, strings.Contains(Render("pool/"+itoa(pid)), "1st place"), "pool page shows payouts")
+}
+
+func TestPoolDisputeSplitPayout(cur realm, t *testing.T) {
+	testing.IssueCoins(pkgAddr, chain.Coins{{"ugnot", 100_000_000}})
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(nil)
+	tid := CreateTable(cross(cur), "FIFA cup", "Alice")
+	AddMember(cross(cur), tid, bob, "Bob")
+	AddMember(cross(cur), tid, carol, "Carol")
+	AddMember(cross(cur), tid, dave, "Dave")
+	AddMember(cross(cur), tid, judge1, "J1")
+	AddMember(cross(cur), tid, judge2, "J2")
+	AddMember(cross(cur), tid, judge3, "J3")
+
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	pid := CreatePool(cross(cur), tid, "Cup final", "Bob,Carol,Dave", stake, "60,40")
+	for _, who := range []address{bob, carol, dave} {
+		testing.SetRealm(testing.NewUserRealm(who))
+		testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+		JoinPool(cross(cur), pid)
+	}
+
+	before := []int64{balance(alice), balance(bob), balance(carol), balance(dave), balance(judge1), balance(judge2), balance(judge3)}
+	testing.SetOriginSend(nil)
+	for _, who := range []address{alice, bob, carol} {
+		testing.SetRealm(testing.NewUserRealm(who))
+		ReportPool(cross(cur), pid, "Alice,Bob")
+	}
+	testing.SetRealm(testing.NewUserRealm(dave))
+	uassert.AbortsWithMessage(t, cur, "rank exactly 2 player(s), best first", func() { ReportPool(cross(cur), pid, "Dave") })
+	ReportPool(cross(cur), pid, "Dave,Alice") // dave lies
+	uassert.Equal(t, "disputed", GetPoolStatus(pid))
+
+	testing.SetRealm(testing.NewUserRealm(bob))
+	uassert.AbortsWithMessage(t, cur, "you are not a judge on this group bet", func() { VotePool(cross(cur), pid, "Bob,Alice") })
+	testing.SetRealm(testing.NewUserRealm(judge1))
+	VotePool(cross(cur), pid, "alice, bob")
+	testing.SetRealm(testing.NewUserRealm(judge2))
+	VotePool(cross(cur), pid, "Alice,Bob")
+	uassert.Equal(t, "settled", GetPoolStatus(pid))
+
+	// pot 4,000,000; fee 40,000; prize 3,960,000 -> 2,376,000 / 1,584,000.
+	// Dave's bond (100,000): 50,000 split by the 3 honest players, 50,000 + fee to 2 judges.
+	uassert.Equal(t, before[0]+2_376_000+bond+16_668, balance(alice))
+	uassert.Equal(t, before[1]+1_584_000+bond+16_666, balance(bob))
+	uassert.Equal(t, before[2]+bond+16_666, balance(carol))
+	uassert.Equal(t, before[3], balance(dave))
+	uassert.Equal(t, before[4]+45_000, balance(judge1))
+	uassert.Equal(t, before[5]+45_000, balance(judge2))
+	uassert.Equal(t, before[6], balance(judge3))
+
+	after := []int64{balance(alice), balance(bob), balance(carol), balance(dave), balance(judge1), balance(judge2), balance(judge3)}
+	total := int64(0)
+	for i := range after {
+		total += after[i] - before[i]
+	}
+	uassert.Equal(t, 4*(stake+bond), total)
+}
+
+func TestPoolValidationAndCancel(cur realm, t *testing.T) {
+	testing.IssueCoins(pkgAddr, chain.Coins{{"ugnot", 100_000_000}})
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(nil)
+	tid := CreateTable(cross(cur), "Quiz night", "Alice")
+	AddMember(cross(cur), tid, bob, "Bob")
+	AddMember(cross(cur), tid, carol, "Carol")
+
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	uassert.AbortsWithMessage(t, cur, "a player is listed twice", func() { CreatePool(cross(cur), tid, "x", "Bob,bob", stake, "100") })
+	uassert.AbortsWithMessage(t, cur, "a group bet needs at least 3 players (use a 1v1 bet for 2)", func() { CreatePool(cross(cur), tid, "x", "Bob", stake, "100") })
+	uassert.AbortsWithMessage(t, cur, "payout percentages must add up to 100", func() { CreatePool(cross(cur), tid, "x", "Bob,Carol", stake, "60,30") })
+	uassert.AbortsWithMessage(t, cur, "more paid places than players minus one", func() { CreatePool(cross(cur), tid, "x", "Bob,Carol", stake, "50,30,20") })
+
+	pid := CreatePool(cross(cur), tid, "Pub quiz", "Bob,Carol", stake, "100")
+	testing.SetRealm(testing.NewUserRealm(bob))
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	JoinPool(cross(cur), pid)
+	uassert.AbortsWithMessage(t, cur, "you already joined", func() { JoinPool(cross(cur), pid) })
+
+	testing.SetOriginSend(nil)
+	uassert.AbortsWithMessage(t, cur, "only the creator can cancel", func() { CancelPool(cross(cur), pid) })
+	a0, b0 := balance(alice), balance(bob)
+	testing.SetRealm(testing.NewUserRealm(alice))
+	CancelPool(cross(cur), pid)
+	uassert.Equal(t, "cancelled", GetPoolStatus(pid))
+	uassert.Equal(t, a0+stake+bond, balance(alice))
+	uassert.Equal(t, b0+stake+bond, balance(bob))
+	uassert.True(t, strings.Contains(PoolJSON(pid), `"status":"cancelled"`), "pool json")
+}

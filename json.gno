@@ -54,18 +54,85 @@ func TableJSON(tableID int) string {
 	for i := len(t.BetIDs) - 1; i >= 0 && i >= len(t.BetIDs)-30; i-- {
 		betList = append(betList, betJSON(mustBet(t.BetIDs[i])))
 	}
+	var poolList []string
+	for i := len(t.PoolIDs) - 1; i >= 0 && i >= len(t.PoolIDs)-30; i-- {
+		poolList = append(poolList, poolJSON(mustPool(t.PoolIDs[i])))
+	}
 	return obj(
 		"id", itoa(t.ID),
 		"name", q(t.Name),
 		"owner", q(t.Owner.String()),
 		"members", "["+strings.Join(members, ",")+"]",
 		"bets", "["+strings.Join(betList, ",")+"]",
+		"pools", "["+strings.Join(poolList, ",")+"]",
 	)
 }
 
 // BetJSON returns one bet with reports, judges, votes and payouts.
 func BetJSON(betID int) string {
 	return betJSON(mustBet(betID))
+}
+
+// PoolJSON returns one group bet.
+func PoolJSON(poolID int) string {
+	return poolJSON(mustPool(poolID))
+}
+
+func poolJSON(p *Pool) string {
+	var players []string
+	for _, a := range p.Players {
+		rep, _ := p.Reports.Get(a.String()).(string)
+		players = append(players, obj(
+			"address", q(a.String()),
+			"joined", boolStr(p.Joined.Has(a.String())),
+			"report", q(rep),
+		))
+	}
+	var judges []string
+	for _, j := range p.Judges {
+		vote, _ := p.Votes.Get(j.String()).(string)
+		judges = append(judges, obj("address", q(j.String()), "vote", q(vote)))
+	}
+	var shares []string
+	for _, sh := range p.Shares {
+		shares = append(shares, i64(sh))
+	}
+	var payouts []string
+	for _, x := range p.Payouts {
+		payouts = append(payouts, obj("to", q(x.To.String()), "amount", i64(x.Amount), "why", q(x.Why)))
+	}
+	deadline := ""
+	if p.Status == StatusDisputed {
+		deadline = p.Deadline.UTC().Format("2006-01-02T15:04:05Z")
+	}
+	firstReport := ""
+	if !p.FirstReportAt.IsZero() {
+		firstReport = p.FirstReportAt.UTC().Format("2006-01-02T15:04:05Z")
+	}
+	return obj(
+		"id", itoa(p.ID),
+		"kind", q("pool"),
+		"tableId", itoa(p.TableID),
+		"title", q(p.Title),
+		"creator", q(p.Creator.String()),
+		"stake", i64(p.Stake),
+		"bond", i64(p.Bond),
+		"shares", "["+strings.Join(shares, ",")+"]",
+		"status", q(p.Status.String()),
+		"players", "["+strings.Join(players, ",")+"]",
+		"judges", "["+strings.Join(judges, ",")+"]",
+		"final", q(p.Final),
+		"deadline", q(deadline),
+		"firstReportAt", q(firstReport),
+		"payouts", "["+strings.Join(payouts, ",")+"]",
+	)
+}
+
+func boolStr(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
 }
 
 func tableSummary(t *Table) string {
@@ -75,7 +142,7 @@ func tableSummary(t *Table) string {
 		"owner", q(t.Owner.String()),
 		"ownerNick", q(t.Nick(t.Owner)),
 		"members", itoa(len(t.Members)),
-		"bets", itoa(len(t.BetIDs)),
+		"bets", itoa(len(t.BetIDs)+len(t.PoolIDs)),
 	)
 }
 
