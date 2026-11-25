@@ -14,8 +14,10 @@ set -euo pipefail
 PKG="gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5"
 REMOTE="${REMOTE:-127.0.0.1:26657}"
 CHAIN="${CHAIN:-dev}"
-STAKE=5000000            # 5 GNOT
-SEND=5500000ugnot        # stake + 10% bond
+STAKE="${STAKE:-5000000}"            # 5 GNOT (set STAKE=100000 on testnet)
+SEND="$((STAKE + STAKE / 10))ugnot"  # stake + 10% bond
+GASFEE="${GASFEE:-1000000ugnot}"
+GASWANTED="${GASWANTED:-30000000}"
 
 addr() { gnokey list | grep " $1 (local)" | sed -E 's/.*addr: (g1[0-9a-z]+).*/\1/'; }
 
@@ -25,12 +27,13 @@ call() { # call <key> <func> [send] -- args...
   for a in "$@"; do args+=(-args "$a"); done
   echo ">> $key: $fn $*"
   echo demo | gnokey maketx call -pkgpath "$PKG" -func "$fn" "${args[@]}" \
-    ${send:+-send "$send"} -gas-fee 1000000ugnot -gas-wanted 30000000 \
+    ${send:+-send "$send"} -gas-fee "$GASFEE" -gas-wanted "$GASWANTED" \
     -broadcast -chainid "$CHAIN" -remote "$REMOTE" -insecure-password-stdin "$key" \
     | grep -E "OK!|Error|Data:" || true
 }
 
-if ! curl -s -o /dev/null "http://$REMOTE/status"; then
+URL="$REMOTE"; [[ "$URL" == http* ]] || URL="http://$URL"
+if ! curl -s -o /dev/null "$URL/status"; then
   echo "The local chain isn't running. Start it in another window with: bash scripts/dev.sh"
   exit 1
 fi
@@ -71,4 +74,9 @@ call demo-judge3 ReportPool "" 1 "Leo"
 call demo-bob CreateBet "$SEND" 1 "Bob beats Leo at FIFA" "Leo" "$STAKE"
 
 echo
-echo "Done. Open: http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5"
+echo "Done."
+if [ "$CHAIN" = "dev" ]; then
+  echo "Open: http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5"
+else
+  echo "Open: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5"
+fi
