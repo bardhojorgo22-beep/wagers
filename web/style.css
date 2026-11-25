@@ -132,3 +132,17 @@ tr:last-child td { border-bottom: 0; }
 .winrow td { background: rgba(111, 207, 124, .08); }
 
 .demo-banner { background: rgba(127, 176, 255, .1); border-bottom: 1px solid rgba(127, 176, 255, .35); color: var(--text); text-align: center; padding: 9px 16px; font-size: 14px; }
+
+/* Phones */
+.card { overflow-x: auto; }
+@media (max-width: 600px) {
+  main { padding: 18px 12px 40px; }
+  h1 { font-size: 26px; }
+  .top { padding: 10px 12px; }
+  .brand { font-size: 17px; }
+  .top-right select { max-width: 120px; }
+  .versus { grid-template-columns: 1fr; }
+  .vs { display: none; }
+  th, td { padding: 8px 6px; font-size: 14px; }
+  .field { min-width: 100%; }
+}

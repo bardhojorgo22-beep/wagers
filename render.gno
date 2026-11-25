@@ -52,6 +52,8 @@ func renderHome() string {
 	sb.WriteString("5. **Disagree?** Everyone else at the table becomes a judge. They have no money in it, so they have no reason to lie. A strict majority decides.\n")
 	sb.WriteString("6. **Lying costs you.** The player who loses the vote forfeits their bond: half to the honest player, half to the judges. Judges also split a 1% fee for showing up.\n")
 	sb.WriteString("7. **No majority before the deadline?** Everyone is refunded in full.\n\n")
+	sb.WriteString("**Group bets** work the same way for 3 to 20 players (poker night, tournaments), paying out winner-takes-all or split by finishing position. ")
+	sb.WriteString("There's no dealer with all the power: non-players judge disputes, and a game needs at least 3 judges unless the players explicitly accept the risk.\n\n")
 	sb.WriteString("The realm keeps nothing. Every coin that goes in comes back out to players and judges.\n\n")
 	sb.WriteString("[➕ Open a new table](" + call("CreateTable") + ")\n\n")
 
