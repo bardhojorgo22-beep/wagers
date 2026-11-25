@@ -82,7 +82,7 @@ Pages: `:` (home), `:table/<id>`, `:bet/<id>`.
 - Network: Gno.land testnet **onyx-1**
 - Realm: `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2`
 - Page: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2
-- Submitted: (pending)
+- Submitted in block **1390831**, tx `+U6dU/4vCM/+kkLgUj2u/OFe1ybrh161uoVigiXfJBM=`
 
 Onyx parks new packages until its package approver enables them, so the page may show "Not Yet Enabled" for a while after deploying.
 
