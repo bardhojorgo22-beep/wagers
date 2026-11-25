@@ -196,7 +196,7 @@ function tableGrid(list) {
   return `<div class="grid">${list.map((t) => `
     <a class="card table-card" href="#/table/${t.id}">
       <h3>🍺 ${esc(t.name)}</h3>
-      <div class="muted small">${t.members} members · ${t.bets} bets · owner ${esc(t.ownerNick || short(t.owner))}</div>
+      <div class="muted small">${plural(t.members, "member")} · ${plural(t.bets, "bet")} · owner ${esc(t.ownerNick || short(t.owner))}</div>
     </a>`).join("")}</div>`;
 }
 
@@ -428,6 +428,8 @@ function toUgnot(v) {
   const n = Math.round(parseFloat(v) * UGNOT);
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
+
+function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
 
 function short(a) { return a ? `${a.slice(0, 7)}…${a.slice(-4)}` : ""; }
 
