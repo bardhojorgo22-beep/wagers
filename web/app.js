@@ -116,6 +116,7 @@ async function connect() {
     const acc = await window.adena.GetAccount();
     if (acc.status !== "success") throw new Error(acc.message || "Could not read account");
     state.account = acc.data.address;
+    try { localStorage.setItem("tw-connected", "1"); } catch (_) {}
     const chain = acc.data.chainId;
     if (chain !== net().chainId) {
       if (state.net === "local") {
@@ -463,4 +464,21 @@ sel.onchange = () => {
 $("#connect").onclick = connect;
 window.addEventListener("hashchange", route);
 renderTop();
-route();
+
+// Reconnect silently after a refresh if the user connected before.
+(async () => {
+  let was = false;
+  try { was = localStorage.getItem("tw-connected") === "1"; } catch (_) {}
+  // Adena injects itself shortly after page load.
+  for (let i = 0; was && !window.adena && i < 20; i++) await new Promise((r) => setTimeout(r, 100));
+  if (was && window.adena) {
+    try {
+      const acc = await window.adena.GetAccount();
+      if (acc.status === "success") {
+        state.account = acc.data.address;
+        renderTop();
+      }
+    } catch (_) {}
+  }
+  route();
+})();
