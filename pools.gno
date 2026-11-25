@@ -120,6 +120,7 @@ func CreatePool(cur realm, tableID int, title string, players string, stake int6
 	p.Joined.Set(caller.String(), true)
 	pools.Set(strconv.Itoa(p.ID), p)
 	t.PoolIDs = append(t.PoolIDs, p.ID)
+	t.log("🃏 " + t.label(caller) + " started a group bet: " + title + " (" + strconv.Itoa(len(list)) + " players, " + gnot(stake, false) + " each)")
 	return p.ID
 }
 
@@ -245,6 +246,7 @@ func (p *Pool) openDispute() {
 		p.refundAll("no judges at this table")
 		return
 	}
+	mustTable(p.TableID).log("⚖️ Dispute! The judges will decide \"" + p.Title + "\"")
 	p.Status = StatusDisputed
 	p.Deadline = time.Now().Add(VoteWindow)
 }
@@ -306,6 +308,7 @@ func (p *Pool) settle(final string, majority []address) {
 			forfeited += p.Bond
 			t.stats(a).DisputesLost++
 			liarsCaught++
+			t.log("🚩 The judges ruled against " + t.label(a) + " on \"" + p.Title + "\". Bond forfeited.")
 		}
 	}
 
@@ -341,10 +344,13 @@ func (p *Pool) settle(final string, majority []address) {
 		s := t.stats(a)
 		s.Net += received(payouts, a) - deposit
 		if len(order) > 0 && a == order[0] {
-			s.Wins++
+			s.win()
 		} else if !containsAddr(order, a) {
-			s.Losses++
+			s.lose()
 		}
+	}
+	if len(order) > 0 {
+		t.log("🃏 " + t.label(order[0]) + " won " + p.Title + " (+" + gnot(prize-rest, false) + ")")
 	}
 }
 

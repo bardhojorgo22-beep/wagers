@@ -669,3 +669,54 @@ func TestPoolNoShowLosesBond(cur realm, t *testing.T) {
 	uassert.Equal(t, c0, balance(carol)) // the no-show forfeits their bond
 	uassert.True(t, strings.Contains(Render("table/"+itoa(tid)), "🚩 1"), "no-show is flagged")
 }
+
+func TestOpenChallengeFeedAndStreaks(cur realm, t *testing.T) {
+	testing.IssueCoins(pkgAddr, chain.Coins{{"ugnot", 100_000_000}})
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(nil)
+	tid := CreateTable(cross(cur), "Open table", "Alice")
+	AddMember(cross(cur), tid, bob, "Bob")
+	AddMember(cross(cur), tid, carol, "Carol")
+
+	// Alice wins three open challenges in a row.
+	for i, taker := range []address{bob, carol, bob} {
+		testing.SetRealm(testing.NewUserRealm(alice))
+		testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+		bid := CreateBet(cross(cur), tid, "open "+itoa(i), "Anyone", stake)
+		uassert.True(t, strings.Contains(Render("bet/"+itoa(bid)), "Open challenge"), "open challenge shown")
+
+		testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+		uassert.AbortsWithMessage(t, cur, "you can't accept your own challenge", func() { AcceptBet(cross(cur), bid) })
+		testing.SetRealm(testing.NewUserRealm(outside))
+		uassert.AbortsWithMessage(t, cur, "you are not a member of this table", func() { AcceptBet(cross(cur), bid) })
+
+		testing.SetRealm(testing.NewUserRealm(taker))
+		AcceptBet(cross(cur), bid)
+		testing.SetOriginSend(nil)
+		Report(cross(cur), bid, "a")
+		testing.SetRealm(testing.NewUserRealm(alice))
+		Report(cross(cur), bid, "a")
+		uassert.Equal(t, "settled", GetBetStatus(bid))
+	}
+
+	r := Render("table/" + itoa(tid))
+	uassert.True(t, strings.Contains(r, "🔥3"), "streak badge: "+r)
+	uassert.True(t, strings.Contains(r, "👑"), "leader badge")
+	uassert.True(t, strings.Contains(r, "Activity"), "activity feed")
+	uassert.True(t, strings.Contains(r, "Alice beat Carol"), "feed shows results")
+	tj := TableJSON(tid)
+	uassert.True(t, strings.Contains(tj, `"bestStreak":3`), "best streak in json")
+	uassert.True(t, strings.Contains(tj, `"events":[`), "events in json")
+
+	// A loss resets the streak.
+	testing.SetRealm(testing.NewUserRealm(bob))
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	bid := CreateBet(cross(cur), tid, "revenge", "Alice", stake)
+	testing.SetRealm(testing.NewUserRealm(alice))
+	AcceptBet(cross(cur), bid)
+	testing.SetOriginSend(nil)
+	Report(cross(cur), bid, "a")
+	testing.SetRealm(testing.NewUserRealm(bob))
+	Report(cross(cur), bid, "a")
+	uassert.True(t, strings.Contains(TableJSON(tid), `"streak":0,"bestStreak":3`), "streak reset for alice")
+}

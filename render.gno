@@ -113,9 +113,17 @@ func renderTable(t *Table) string {
 		if r.s.DisputesLost > 0 {
 			liar = "🚩 " + liar
 		}
-		sb.WriteString("| " + strconv.Itoa(i+1) + " | " + who(t, r.addr) + " | " + gnot(r.s.Net, true) + " | " +
+		sb.WriteString("| " + strconv.Itoa(i+1) + " | " + who(t, r.addr) + badges(r.s, i) + " | " + gnot(r.s.Net, true) + " | " +
 			strconv.Itoa(r.s.Wins) + " | " + strconv.Itoa(r.s.Losses) + " | " + strconv.Itoa(r.s.Draws) + " | " +
 			liar + " | " + strconv.Itoa(r.s.Judged) + " | [🎲 Challenge](" + challenge(t, r.addr) + ") |\n")
+	}
+
+	if len(t.Events) > 0 {
+		sb.WriteString("\n## 📜 Activity\n\n")
+		for i := len(t.Events) - 1; i >= 0 && i >= len(t.Events)-10; i-- {
+			e := t.Events[i]
+			sb.WriteString("- " + escape(e.Text) + " _(" + e.At.UTC().Format("Jan 2, 15:04") + ")_\n")
+		}
 	}
 
 	if len(t.PoolIDs) > 0 {
@@ -180,6 +188,9 @@ func renderBet(b *Bet) string {
 	send := strconv.FormatInt(b.Stake+b.Bond, 10) + "ugnot"
 	switch b.Status {
 	case StatusOpen:
+		if b.PlayerB == "" {
+			sb.WriteString("**Open challenge:** any member of the table can take this bet. First to accept plays.\n\n")
+		}
 		sb.WriteString("### Actions\n\n")
 		sb.WriteString("- Player B: [✅ Accept and lock " + gnot(b.Stake+b.Bond, false) + "](" +
 			callSend("AcceptBet", send, "betID", id) + ")\n")
@@ -361,6 +372,21 @@ func poolBadge(t *Table, p *Pool) string {
 	return p.Status.String()
 }
 
+// badges are small honours on the leaderboard, derived from stats.
+func badges(s *Stats, rank int) string {
+	out := ""
+	if rank == 0 && s.Net > 0 {
+		out += " 👑"
+	}
+	if s.Streak >= 3 {
+		out += " 🔥" + strconv.Itoa(s.Streak)
+	}
+	if s.Judged >= 3 {
+		out += " ⚖️"
+	}
+	return out
+}
+
 // nextStep tells visitors what the bet is waiting for.
 func nextStep(t *Table, b *Bet) string {
 	switch b.Status {
@@ -476,6 +502,9 @@ func result(t *Table, b *Bet, r string) string {
 
 // plain is a nickname (or short address) without markdown, for link text.
 func plain(t *Table, a address) string {
+	if a == "" {
+		return "anyone"
+	}
 	if n := t.Nick(a); n != "" {
 		return escape(n)
 	}
@@ -519,6 +548,9 @@ func gnot(u int64, signed bool) string {
 
 // who shows a member's nickname at a table, falling back to a short address.
 func who(t *Table, a address) string {
+	if a == "" {
+		return "_anyone_"
+	}
 	if n := t.Nick(a); n != "" {
 		return "**" + escape(n) + "**"
 	}

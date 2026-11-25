@@ -79,6 +79,21 @@ type Stats struct {
 	Draws        int
 	DisputesLost int // times this player's report lost a judges' vote
 	Judged       int // times this member voted with the majority as a judge
+	Streak       int // current win streak
+	BestStreak   int
+}
+
+func (s *Stats) win() {
+	s.Wins++
+	s.Streak++
+	if s.Streak > s.BestStreak {
+		s.BestStreak = s.Streak
+	}
+}
+
+func (s *Stats) lose() {
+	s.Losses++
+	s.Streak = 0
 }
 
 type Table struct {
@@ -90,7 +105,35 @@ type Table struct {
 	Names   *avl.Tree // address -> nickname
 	BetIDs  []int
 	PoolIDs []int
+	Events  []Event // newest last, capped at MaxEvents
 	Created time.Time
+}
+
+// Event is a line in a table's activity feed.
+type Event struct {
+	At   time.Time
+	Text string
+}
+
+const MaxEvents = 25
+
+func (t *Table) log(text string) {
+	t.Events = append(t.Events, Event{time.Now(), text})
+	if len(t.Events) > MaxEvents {
+		t.Events = t.Events[len(t.Events)-MaxEvents:]
+	}
+}
+
+// label is a member's nickname, or a short address, for activity text.
+func (t *Table) label(a address) string {
+	if a == "" {
+		return "anyone"
+	}
+	if n := t.Nick(a); n != "" {
+		return n
+	}
+	s := a.String()
+	return s[:7] + "…" + s[len(s)-4:]
 }
 
 type Payout struct {
@@ -158,6 +201,7 @@ func CreateTable(cur realm, name string, nickname string) int {
 		Created: time.Now(),
 	}
 	t.setName(caller, nickname)
+	t.log("🍺 " + t.label(caller) + " opened the table")
 	tables.Set(strconv.Itoa(t.ID), t)
 	return t.ID
 }
@@ -173,6 +217,7 @@ func AddMember(cur realm, tableID int, member address, nickname string) {
 	require(len(t.Members) < 50, "table is full (max 50)")
 	t.setName(member, nickname) // validate the nickname before changing anything
 	t.Members = append(t.Members, member)
+	t.log("👋 " + t.label(member) + " joined the table")
 }
 
 // SetNickname changes how you appear at a table.
@@ -200,8 +245,14 @@ func CreateBet(cur realm, tableID int, title string, opponentName string, stake 
 	require(len(title) <= 140, "bet title too long (max 140)")
 	require(printable(title), "bet title has invalid characters")
 	require(t.isMember(caller), "you are not a member of this table")
-	opponent := t.resolve(opponentName)
-	require(opponent != caller, "you can't bet against yourself")
+	// "anyone" makes an open challenge: the first member to accept plays.
+	var opponent address
+	if strings.ToLower(strings.TrimSpace(opponentName)) == "anyone" {
+		require(len(t.Members) >= 2, "nobody else is at this table yet")
+	} else {
+		opponent = t.resolve(opponentName)
+		require(opponent != caller, "you can't bet against yourself")
+	}
 	require(stake >= MinStake, "stake too small (min "+strconv.FormatInt(MinStake, 10)+"ugnot)")
 	require(stake <= MaxStake, "stake too large")
 
@@ -223,6 +274,7 @@ func CreateBet(cur realm, tableID int, title string, opponentName string, stake 
 	}
 	bets.Set(strconv.Itoa(b.ID), b)
 	t.BetIDs = append(t.BetIDs, b.ID)
+	t.log("🎲 " + t.label(caller) + " challenged " + t.label(opponent) + ": " + title + " (" + gnot(stake, false) + ")")
 	return b.ID
 }
 
@@ -232,9 +284,15 @@ func AcceptBet(cur realm, betID int) {
 	caller := cur.Previous().Address()
 	b := mustBet(betID)
 	require(b.Status == StatusOpen, "bet is not open")
+	if b.PlayerB == "" {
+		require(mustTable(b.TableID).isMember(caller), "you are not a member of this table")
+		require(caller != b.PlayerA, "you can't accept your own challenge")
+		b.PlayerB = caller
+	}
 	require(caller == b.PlayerB, "only the challenged player can accept")
 	requireSent(b.Stake + b.Bond)
 	b.Status = StatusLive
+	mustTable(b.TableID).log("🤝 " + mustTable(b.TableID).label(b.PlayerB) + " accepted " + mustTable(b.TableID).label(b.PlayerA) + "'s bet: " + b.Title)
 	b.Judges = mustTable(b.TableID).judgesFor(b.PlayerA, b.PlayerB)
 	totalLocked += 2 * (b.Stake + b.Bond)
 }
@@ -357,6 +415,7 @@ func (b *Bet) openDispute() bool {
 		b.refundAll("no judges at this table")
 		return false
 	}
+	mustTable(b.TableID).log("⚖️ Dispute! The judges will decide \"" + b.Title + "\"")
 	b.Status = StatusDisputed
 	b.Deadline = time.Now().Add(VoteWindow)
 	return true
@@ -419,6 +478,7 @@ func (b *Bet) settle(final string, majority []address) {
 			forfeited += b.Bond
 			t.stats(players[i]).DisputesLost++
 			liarsCaught++
+			t.log("🚩 The judges ruled against " + t.label(players[i]) + " on \"" + b.Title + "\". Bond forfeited.")
 		}
 	}
 
@@ -459,14 +519,17 @@ func (b *Bet) settle(final string, majority []address) {
 	}
 	switch final {
 	case ResultA:
-		t.stats(b.PlayerA).Wins++
-		t.stats(b.PlayerB).Losses++
+		t.stats(b.PlayerA).win()
+		t.stats(b.PlayerB).lose()
+		t.log("🏆 " + t.label(b.PlayerA) + " beat " + t.label(b.PlayerB) + ": " + b.Title + " (+" + gnot(b.Stake, false) + ")")
 	case ResultB:
-		t.stats(b.PlayerB).Wins++
-		t.stats(b.PlayerA).Losses++
+		t.stats(b.PlayerB).win()
+		t.stats(b.PlayerA).lose()
+		t.log("🏆 " + t.label(b.PlayerB) + " beat " + t.label(b.PlayerA) + ": " + b.Title + " (+" + gnot(b.Stake, false) + ")")
 	case ResultDraw:
 		t.stats(b.PlayerA).Draws++
 		t.stats(b.PlayerB).Draws++
+		t.log("🤝 " + t.label(b.PlayerA) + " and " + t.label(b.PlayerB) + " drew: " + b.Title)
 	}
 }
 

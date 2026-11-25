@@ -61,11 +61,18 @@ func TableJSON(tableID int) string {
 			"draws", itoa(s.Draws),
 			"disputesLost", itoa(s.DisputesLost),
 			"judged", itoa(s.Judged),
+			"streak", itoa(s.Streak),
+			"bestStreak", itoa(s.BestStreak),
 		))
 	}
 	var betList []string
 	for i := len(t.BetIDs) - 1; i >= 0 && i >= len(t.BetIDs)-30; i-- {
 		betList = append(betList, betJSON(mustBet(t.BetIDs[i])))
+	}
+	var events []string
+	for i := len(t.Events) - 1; i >= 0; i-- {
+		e := t.Events[i]
+		events = append(events, obj("at", q(e.At.UTC().Format("2006-01-02T15:04:05Z")), "text", q(e.Text)))
 	}
 	var poolList []string
 	for i := len(t.PoolIDs) - 1; i >= 0 && i >= len(t.PoolIDs)-30; i-- {
@@ -78,6 +85,7 @@ func TableJSON(tableID int) string {
 		"members", "["+strings.Join(members, ",")+"]",
 		"bets", "["+strings.Join(betList, ",")+"]",
 		"pools", "["+strings.Join(poolList, ",")+"]",
+		"events", "["+strings.Join(events, ",")+"]",
 	)
 }
 

@@ -187,6 +187,7 @@ async function pageHome() {
     tables: tables.length, bets: tables.reduce((n, t) => n + t.bets, 0), settled: 0, liarsCaught: 0, biggestPot: 0, judgesPaid: 0,
   }));
   const mine = state.account ? await qeval(`MyTablesJSON("${state.account}")`) : [];
+  const todo = state.account ? await yourMoves(mine.slice(0, 10)) : [];
 
   app.innerHTML = `
     <section class="hero">
@@ -216,6 +217,10 @@ async function pageHome() {
 
     <div id="create-form"></div>
 
+    ${todo.length ? `<h2>👉 Your move</h2><div class="card yourmove">
+      ${todo.map((x) => `<div class="item"><span>${x.text}</span><a class="btn sm" href="${x.href}">${x.cta}</a></div>`).join("")}
+    </div>` : ""}
+
     ${state.account ? `<h2>Your tables</h2>${mine.length ? tableGrid(mine) : `<p class="muted">You're not at any table yet. Open one, or ask a friend to add you.</p>`}` : ""}
 
     <h2>All tables</h2>
@@ -240,6 +245,44 @@ async function pageHome() {
       </div>`;
     $("#t-go").onclick = () => call("CreateTable", [$("#t-name").value, $("#t-nick").value]);
   };
+}
+
+// yourMoves lists every bet at your tables that is waiting on you.
+async function yourMoves(tables) {
+  const me = state.account;
+  const out = [];
+  const details = await Promise.all(tables.map((t) => qeval(`TableJSON(${t.id})`).catch(() => null)));
+  for (const t of details) {
+    if (!t) continue;
+    const nick = nicker(t);
+    const where = `<span class="muted small">· ${esc(t.name)}</span>`;
+    for (const b of t.bets) {
+      const isPlayer = me === b.playerA || me === b.playerB;
+      const myReport = me === b.playerA ? b.reportA : me === b.playerB ? b.reportB : "";
+      const judge = b.judges.find((j) => j.address === me);
+      if (b.status === "open" && b.playerB === me) {
+        out.push({ text: `🎲 <b>${esc(nick(b.playerA))}</b> challenged you: ${esc(b.title)} ${where}`, cta: "Accept or decline", href: `#/bet/${b.id}` });
+      } else if (b.status === "open" && !b.playerB && b.playerA !== me) {
+        out.push({ text: `🙋 Open challenge from <b>${esc(nick(b.playerA))}</b>: ${esc(b.title)} ${where}`, cta: "Take it", href: `#/bet/${b.id}` });
+      } else if (b.status === "live" && isPlayer && !myReport) {
+        out.push({ text: `📝 Report the result: ${esc(b.title)} ${where}`, cta: "Report", href: `#/bet/${b.id}` });
+      } else if (b.status === "disputed" && judge && !judge.vote) {
+        out.push({ text: `⚖️ You're a judge: ${esc(b.title)} ${where}`, cta: "Vote", href: `#/bet/${b.id}` });
+      }
+    }
+    for (const p of t.pools) {
+      const player = p.players.find((x) => x.address === me);
+      const judge = p.judges.find((j) => j.address === me);
+      if (p.status === "open" && player && !player.joined) {
+        out.push({ text: `🃏 You're invited: ${esc(p.title)} ${where}`, cta: "Join", href: `#/pool/${p.id}` });
+      } else if (p.status === "live" && player && !player.report) {
+        out.push({ text: `📝 Report the finishing order: ${esc(p.title)} ${where}`, cta: "Report", href: `#/pool/${p.id}` });
+      } else if (p.status === "disputed" && judge && !judge.vote) {
+        out.push({ text: `⚖️ You're a judge: ${esc(p.title)} ${where}`, cta: "Vote", href: `#/pool/${p.id}` });
+      }
+    }
+  }
+  return out;
 }
 
 function tableGrid(list) {
@@ -270,7 +313,8 @@ async function pageTable(id) {
       <div class="row" style="margin-top:10px">
         <div class="field"><label>What's the bet?</label><input id="b-title" placeholder="I beat you at chess, 10 min blitz" maxlength="140"></div>
         <div class="field" style="max-width:200px"><label>Against</label>
-          <select id="b-opp">${t.members.filter((m) => m.address !== me).map((m) => `<option value="${m.address}">${esc(m.nick || short(m.address))}</option>`).join("")}</select></div>
+          <select id="b-opp">${t.members.filter((m) => m.address !== me).map((m) => `<option value="${m.address}">${esc(m.nick || short(m.address))}</option>`).join("")}
+            <option value="anyone">🙋 Anyone (open challenge)</option></select></div>
         <div class="field" style="max-width:140px"><label>Stake (GNOT)</label><input id="b-stake" type="number" min="0.01" step="0.01" value="1"></div>
         <button class="btn" id="b-go">Lock & challenge</button>
       </div>
@@ -303,7 +347,7 @@ async function pageTable(id) {
       ${ranked.map((m, i) => `
         <tr>
           <td>${i + 1}</td>
-          <td><b>${esc(m.nick || short(m.address))}</b>${m.address === me ? ` <span class="muted small">(you)</span>` : ""}</td>
+          <td><b>${esc(m.nick || short(m.address))}</b>${badges(m, i)}${m.address === me ? ` <span class="muted small">(you)</span>` : ""}</td>
           <td class="num ${m.net > 0 ? "pos" : m.net < 0 ? "neg" : ""}">${gnot(m.net, true)}</td>
           <td>${m.wins}-${m.losses}-${m.draws}</td>
           <td>${m.disputesLost ? `<span class="flag">🚩 ${m.disputesLost}</span>` : "0"}</td>
@@ -311,6 +355,10 @@ async function pageTable(id) {
           <td>${isMember && m.address !== me ? `<button class="btn sm ghost" data-vs="${m.address}">🎲 Challenge</button>` : ""}</td>
         </tr>`).join("")}
     </table></div>
+
+    ${(t.events || []).length ? `<h2>📜 Activity</h2><div class="card feed">
+      ${t.events.slice(0, 10).map((e) => `<div class="ev"><span>${esc(e.text)}</span><span class="muted small">${ago(e.at)}</span></div>`).join("")}
+    </div>` : ""}
 
     ${t.pools.length ? `<h2>🃏 Group bets</h2><div class="card"><table>
       <tr><th>Game</th><th>Players</th><th class="num">Stake</th><th>Status</th></tr>
@@ -412,7 +460,9 @@ async function pageBet(id) {
   const A = nick(b.playerA), B = nick(b.playerB);
   const label = (r) => r === "a" ? `${A} won` : r === "b" ? `${B} won` : r === "draw" ? "Draw" : "—";
   const lock = b.stake + b.bond;
-  const isA = me === b.playerA, isB = me === b.playerB;
+  const isOpenChallenge = !b.playerB;
+  const isA = me === b.playerA;
+  const isB = isOpenChallenge ? (!!me && me !== b.playerA && t.members.some((m) => m.address === me)) : me === b.playerB;
   const myReport = isA ? b.reportA : isB ? b.reportB : "";
   const judge = b.judges.find((j) => j.address === me);
   const votes = { a: 0, b: 0, draw: 0 };
@@ -421,10 +471,10 @@ async function pageBet(id) {
 
   let actions = "";
   if (b.status === "open") {
-    actions = `<div class="hint">👉 Waiting for <b>${esc(B)}</b> to accept and lock ${gnot(lock)}.</div>
+    actions = `<div class="hint">👉 ${isOpenChallenge ? `<b>Open challenge:</b> anyone at the table can take it. First to accept plays` : `Waiting for <b>${esc(B)}</b> to accept`} and lock ${gnot(lock)}.</div>
       <div class="actions">
         ${isB ? `<button class="btn green" data-do="accept">✅ Accept & lock ${gnot(lock)}</button>
-                 <button class="btn ghost" data-do="decline">🙅 Decline</button>` : ""}
+                 ${isOpenChallenge ? "" : `<button class="btn ghost" data-do="decline">🙅 Decline</button>`}` : ""}
         ${isA ? `<button class="btn ghost" data-do="cancel">Cancel & refund</button>` : ""}
       </div>`;
   } else if (b.status === "live") {
@@ -592,6 +642,22 @@ async function pagePool(id) {
   });
 }
 
+function badges(m, rank) {
+  let out = "";
+  if (rank === 0 && m.net > 0) out += ` <span title="Top of the table">👑</span>`;
+  if ((m.streak || 0) >= 3) out += ` <span title="${m.streak}-win streak">🔥${m.streak}</span>`;
+  if (m.judged >= 3) out += ` <span title="Trusted judge">⚖️</span>`;
+  return out;
+}
+
+function ago(iso) {
+  const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
 function place(i) { return ["1st", "2nd", "3rd"][i] || `${i + 1}th`; }
 
 function poolPill(p, nick) {
@@ -643,7 +709,7 @@ async function route() {
 
 function nicker(t) {
   const names = Object.fromEntries(t.members.map((m) => [m.address, m.nick]));
-  return (addr) => names[addr] || short(addr);
+  return (addr) => !addr ? "Anyone" : names[addr] || short(addr);
 }
 
 function statusPill(b, nick) {

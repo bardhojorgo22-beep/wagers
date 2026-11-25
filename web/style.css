@@ -146,3 +146,8 @@ tr:last-child td { border-bottom: 0; }
   th, td { padding: 8px 6px; font-size: 14px; }
   .field { min-width: 100%; }
 }
+
+.feed .ev { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.feed .ev:last-child { border-bottom: 0; }
+.yourmove .item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.yourmove .item:last-child { border-bottom: 0; }

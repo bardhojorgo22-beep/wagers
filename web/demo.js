@@ -61,6 +61,11 @@
       judges: [A.bob, A.marco, A.sara].map((a) => ({ address: a, vote: "" })),
       deadline: "", firstReportAt: iso(now - 2 * 3600e3), payouts: [],
     },
+    6: {
+      id: 6, tableId: 1, title: "Anyone up for a 5 min blitz?", playerA: A.marco, playerB: "",
+      stake: 1 * G, bond: 0.1 * G, status: "open", reportA: "", reportB: "", final: "",
+      judges: [], deadline: "", firstReportAt: "", payouts: [],
+    },
   };
 
   const pools = {
@@ -89,22 +94,33 @@
   };
 
   const members = [
-    { address: A.alice, nick: "Alice", net: 5.15 * G, wins: 2, losses: 1, draws: 0, disputesLost: 0, judged: 0 },
-    { address: A.bob, nick: "Bob", net: -15.5 * G, wins: 0, losses: 3, draws: 0, disputesLost: 1, judged: 0 },
-    { address: A.marco, nick: "Marco", net: 0.175 * G, wins: 0, losses: 0, draws: 0, disputesLost: 0, judged: 1 },
-    { address: A.sara, nick: "Sara", net: 0.175 * G, wins: 0, losses: 0, draws: 0, disputesLost: 0, judged: 1 },
-    { address: A.leo, nick: "Leo", net: 10 * G, wins: 1, losses: 0, draws: 0, disputesLost: 0, judged: 0 },
+    { address: A.alice, nick: "Alice", net: 5.15 * G, wins: 2, losses: 1, draws: 0, disputesLost: 0, judged: 0, streak: 0, bestStreak: 2 },
+    { address: A.bob, nick: "Bob", net: -15.5 * G, wins: 0, losses: 3, draws: 0, disputesLost: 1, judged: 0, streak: 0, bestStreak: 0 },
+    { address: A.marco, nick: "Marco", net: 0.175 * G, wins: 0, losses: 0, draws: 0, disputesLost: 0, judged: 1, streak: 0, bestStreak: 0 },
+    { address: A.sara, nick: "Sara", net: 0.175 * G, wins: 0, losses: 0, draws: 0, disputesLost: 0, judged: 1, streak: 0, bestStreak: 0 },
+    { address: A.leo, nick: "Leo", net: 10 * G, wins: 1, losses: 0, draws: 0, disputesLost: 0, judged: 0, streak: 1, bestStreak: 1 },
   ];
 
   const table = {
     id: 1, name: "Friday Chess Club", owner: A.alice, members,
-    bets: [5, 4, 3, 2, 1].map((i) => bets[i]),
+    bets: [6, 5, 4, 3, 2, 1].map((i) => bets[i]),
     pools: [2, 1].map((i) => pools[i]),
+    events: [
+      ["🎲 Marco challenged anyone: Anyone up for a 5 min blitz? (1 GNOT)", 0.3],
+      ["🃏 Bob started a group bet: Sunday FIFA cup (4 players, 3 GNOT each)", 1],
+      ["⚖️ Dispute! The judges will decide \"Darts, best of 3\"", 5],
+      ["🃏 Leo won Friday poker night (+15 GNOT)", 24],
+      ["🚩 The judges ruled against Bob on \"Rematch: Alice wins again\". Bond forfeited.", 48],
+      ["🏆 Alice beat Bob: Rematch: Alice wins again (+5 GNOT)", 48],
+      ["🏆 Alice beat Bob: Alice beats Bob, 10 min blitz (+5 GNOT)", 72],
+      ["👋 Leo joined the table", 96],
+      ["🍺 Alice opened the table", 100],
+    ].map(([text, h]) => ({ at: iso(now - h * 3600e3), text })),
   };
 
   const data = {
-    "TablesJSON()": [{ id: 1, name: table.name, owner: A.alice, ownerNick: "Alice", members: 5, bets: 7 }],
-    "StatsJSON()": { tables: 1, bets: 7, settled: 3, locked: 38.5 * G, liarsCaught: 1, biggestPot: 15 * G, judgesPaid: 0.35 * G },
+    "TablesJSON()": [{ id: 1, name: table.name, owner: A.alice, ownerNick: "Alice", members: 5, bets: 8 }],
+    "StatsJSON()": { tables: 1, bets: 8, settled: 3, locked: 38.5 * G, liarsCaught: 1, biggestPot: 15 * G, judgesPaid: 0.35 * G },
     "TableJSON(1)": table,
   };
   for (const [id, b] of Object.entries(bets)) data[`BetJSON(${id})`] = b;
