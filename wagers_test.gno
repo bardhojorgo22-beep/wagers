@@ -41,11 +41,11 @@ func TestAgreedResult(cur realm, t *testing.T) {
 	AddMember(cross(cur), tid, judge2, "Judge Two")
 	AddMember(cross(cur), tid, judge3, "Judge Three")
 	testing.SetRealm(testing.NewUserRealm(alice))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	bid := CreateBet(cross(cur), tid, "Alice beats Bob, 10 min blitz", "bob", stake)
 	uassert.Equal(t, "open", GetBetStatus(bid))
 	testing.SetRealm(testing.NewUserRealm(bob))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	AcceptBet(cross(cur), bid)
 	uassert.Equal(t, "live", GetBetStatus(bid))
 	a0, b0 := balance(alice), balance(bob)
@@ -81,11 +81,11 @@ func TestDisputeLiarLosesBond(cur realm, t *testing.T) {
 	AddMember(cross(cur), tid, judge2, "Judge Two")
 	AddMember(cross(cur), tid, judge3, "Judge Three")
 	testing.SetRealm(testing.NewUserRealm(alice))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	bid := CreateBet(cross(cur), tid, "Alice beats Bob, 10 min blitz", "bob", stake)
 	uassert.Equal(t, "open", GetBetStatus(bid))
 	testing.SetRealm(testing.NewUserRealm(bob))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	AcceptBet(cross(cur), bid)
 	uassert.Equal(t, "live", GetBetStatus(bid))
 	a0, b0 := balance(alice), balance(bob)
@@ -151,11 +151,11 @@ func TestDisputeDraw(cur realm, t *testing.T) {
 	AddMember(cross(cur), tid, judge2, "Judge Two")
 	AddMember(cross(cur), tid, judge3, "Judge Three")
 	testing.SetRealm(testing.NewUserRealm(alice))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	bid := CreateBet(cross(cur), tid, "Alice beats Bob, 10 min blitz", "bob", stake)
 	uassert.Equal(t, "open", GetBetStatus(bid))
 	testing.SetRealm(testing.NewUserRealm(bob))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	AcceptBet(cross(cur), bid)
 	uassert.Equal(t, "live", GetBetStatus(bid))
 	_ = tid
@@ -192,11 +192,11 @@ func TestExpiredDisputeRefunds(cur realm, t *testing.T) {
 	AddMember(cross(cur), tid, judge2, "Judge Two")
 	AddMember(cross(cur), tid, judge3, "Judge Three")
 	testing.SetRealm(testing.NewUserRealm(alice))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	bid := CreateBet(cross(cur), tid, "Alice beats Bob, 10 min blitz", "bob", stake)
 	uassert.Equal(t, "open", GetBetStatus(bid))
 	testing.SetRealm(testing.NewUserRealm(bob))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	AcceptBet(cross(cur), bid)
 	uassert.Equal(t, "live", GetBetStatus(bid))
 	_ = tid
@@ -240,11 +240,11 @@ func TestEscalateNoShow(cur realm, t *testing.T) {
 	AddMember(cross(cur), tid, judge2, "Judge Two")
 	AddMember(cross(cur), tid, judge3, "Judge Three")
 	testing.SetRealm(testing.NewUserRealm(alice))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	bid := CreateBet(cross(cur), tid, "Alice beats Bob, 10 min blitz", "bob", stake)
 	uassert.Equal(t, "open", GetBetStatus(bid))
 	testing.SetRealm(testing.NewUserRealm(bob))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	AcceptBet(cross(cur), bid)
 	uassert.Equal(t, "live", GetBetStatus(bid))
 	_ = tid
@@ -283,14 +283,14 @@ func TestCancelAndValidation(cur realm, t *testing.T) {
 
 	// Opponent not at the table.
 	testing.SetRealm(testing.NewUserRealm(alice))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	uassert.AbortsWithMessage(t, cur, "opponent is not a member of this table", func() {
 		CreateBet(cross(cur), tid, "who?", outside.String(), stake)
 	})
 
 	testing.SetRealm(testing.NewUserRealm(alice))
 
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	bid := CreateBet(cross(cur), tid, "cancel me", bob.String(), stake)
 
 	testing.SetRealm(testing.NewUserRealm(bob))
@@ -335,10 +335,10 @@ func TestNoJudgesRefunds(cur realm, t *testing.T) {
 	tid := CreateTable(cross(cur), "Just us two", "Alice")
 	AddMember(cross(cur), tid, bob, "Bob")
 	testing.SetRealm(testing.NewUserRealm(alice))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	bid := CreateBet(cross(cur), tid, "no judges", "Bob", stake)
 	testing.SetRealm(testing.NewUserRealm(bob))
-	testing.SetOriginSend(chain.Coins{{"ugnot", stake+bond}})
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	AcceptBet(cross(cur), bid)
 
 	a0, b0 := balance(alice), balance(bob)
@@ -434,7 +434,6 @@ func TestRender(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(Render("table/999"), "Table not found"), "missing table")
 	uassert.True(t, strings.Contains(Render("bet/999"), "Bet not found"), "missing bet")
 }
-
 
 // ---------------------------------------------------------------------------
 // Group bets

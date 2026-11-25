@@ -1,8 +1,12 @@
 # 🍺 Tavern Wagers
 
+![Tavern Wagers](web/cover.png)
+
 **Bet on anything with your friends. The money's locked upfront, neutral judges call it, and the winner gets paid automatically. No more "I'll pay you later."**
 
 Built on [Gno.land](https://gno.land) for the Gnome Tavern hackathon.
+
+**Try it in 60 seconds:** open the [web app](https://tavern-wagers.vercel.app). It shows sample data (demo mode) while the testnet package waits for approval: open *Friday Chess Club*, then the disputed *Darts, best of 3* bet and the *Friday poker night* group bet.
 
 **Web app:** https://tavern-wagers.vercel.app · **Realm:** https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5
 

@@ -35,7 +35,7 @@ const (
 	ResultB    = "b"    // player B won
 	ResultDraw = "draw" // draw, stakes go back
 
-	MinStake int64 = 10_000              // 0.01 GNOT
+	MinStake int64 = 10_000                // 0.01 GNOT
 	MaxStake int64 = 1_000_000_000_000_000 // 1 billion GNOT: keeps every pot far from int64 overflow
 
 	ReportWindow = 24 * time.Hour // how long a player has to answer the other's report

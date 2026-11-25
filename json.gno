@@ -222,4 +222,4 @@ func obj(kv ...string) string {
 func q(s string) string { return strconv.Quote(s) }
 
 func itoa(n int) string  { return strconv.Itoa(n) }
-func i64(n int64) string  { return strconv.FormatInt(n, 10) }
+func i64(n int64) string { return strconv.FormatInt(n, 10) }
