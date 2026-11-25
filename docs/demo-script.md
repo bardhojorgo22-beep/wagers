@@ -1,39 +1,56 @@
-# Demo video script (about 2:30)
+# Demo video script (about 2:45)
 
-Record your screen with the Windows Snipping Tool (Win+Shift+R) or OBS. Use the local gnodev node after running `scripts/demo-scenario.sh`, or the testnet once the package is enabled. Speak slowly; it's fine to read this.
+**Setup (before recording):**
+1. `bash scripts/dev.sh` in one terminal (local chain), `bash scripts/demo-scenario.sh` in another.
+2. `python3 -m http.server 8080 -d web` in a third, open http://localhost:8080, pick **Local (gnodev)**, connect Adena.
+3. Your wallet should be a member of a table with Bob (the scenario doesn't do this: create "Joani's Tavern" in the app and add Bob `g1rmme0557und5zxsqredce67seglmlpwp9gnwt2`).
 
-## 0:00 to 0:20 · The problem (home page)
+Record with Win+Shift+R (Snipping Tool) or OBS. Read slowly; pauses are fine.
 
-Show: the Tavern Wagers home page.
+## 0:00 · The problem (app home page)
 
-> "Every friend group has bets. 'I'll beat you at chess.' 'Arsenal wins Saturday.' And they always end the same way: the loser says 'I'll pay you later', or you argue about who actually won. Tavern Wagers fixes that on Gno.land."
+> "Every friend group bets. 'I'll beat you at chess.' 'Winner of poker night takes the pot.' And it always ends the same way: 'I'll pay you later', or an argument about who actually won. Tavern Wagers fixes that, on Gno.land."
 
-## 0:20 to 0:50 · How it works (scroll the "How it works" list)
+Point at the stats card.
 
-> "You open a table with your friends. When two of you bet, you both lock your stake in the realm before the game, plus a 10% honesty bond. Nobody holds the money. The realm does, and its code is public."
+> "Zero percent house cut. Every coin that goes in comes back out to players and judges."
 
-> "After the game, both players report who won. If you agree, you're paid instantly."
+## 0:20 · A real bet, live (your table)
 
-## 0:50 to 1:30 · The table (click "Friday Chess Club")
+Open your table. Fill **New bet**: "I beat Bob at chess", against Bob, 1 GNOT. Click **Lock & challenge**, approve in Adena.
 
-Show: the leaderboard.
+> "I challenge Bob. The app locks my stake plus a 10% honesty bond in the realm. Not in my wallet, not in Bob's: in the code."
 
-> "This is our table. Alice is up ten GNOT. Bob is down, and he's got a red flag, because he lied about a result. Let me show you."
+(Off camera, Bob accepts with gnokey; refresh.)
 
-Click "Rematch: Alice wins again".
+> "Bob accepts and locks the same. Nobody can run off with the pot now."
 
-> "Alice reported that she won. Bob reported that he won. One of them is lying. So the bet went to the judges: everyone else at the table. Marco and Sara have no money in this bet, so they have no reason to lie. Both voted Alice."
+Open the bet, click **Joani won**, approve. (Bob reports the same off camera; refresh.)
 
-## 1:30 to 2:00 · The payouts (scroll to the Payouts table)
+> "We both report I won, so it pays out instantly, bonds back, no fees."
 
-> "The moment a majority agreed, the realm paid out automatically. Alice gets the pot minus a 1% fee for the judges, her bond back, and half of Bob's bond. The judges split the fee and the other half of Bob's bond. Bob gets nothing, and that red flag stays on the leaderboard forever."
+## 1:05 · When someone lies (Friday Chess Club → "Rematch: Alice wins again")
 
-> "And the realm keeps nothing. Every coin that went in came back out."
+> "But what if someone lies? Here Alice says she won and Bob says he did. So the bet goes to the judges: everyone at the table who isn't playing. Marco and Sara have no money in it, so no reason to lie. Both say Alice."
 
-## 2:00 to 2:25 · An action (go back, open "Bob beats Leo at FIFA", click Accept)
+Scroll to payouts.
 
-> "Every step is a button. Here Leo can accept Bob's challenge: the amount is already filled in. Reporting, voting, cancelling: all the same."
+> "Alice gets the pot, her bond, and half of Bob's bond. The judges split a 1% fee and the other half. Bob gets nothing, and a red flag on the leaderboard forever."
 
-## 2:25 to 2:35 · Close (back to home page)
+## 1:40 · Poker night (Friday Chess Club → "Friday poker night")
 
-> "Tavern Wagers. Bet on anything with your friends. The money's locked upfront, neutral judges call it, and the winner gets paid automatically. Built on Gno.land."
+> "It's not just one on one. Group bets handle poker nights and tournaments, 3 to 20 players, winner-takes-all or split payouts like 60/40. Every player reports who won. If anyone disagrees, the non-players judge it."
+
+Point at the ⚠️ banner.
+
+> "And no single dealer holds all the power. A group game needs at least 3 judges. You can play with fewer, but only if you explicitly accept the risk, and the game says so forever. The idea is to rotate who sits out and judges."
+
+## 2:15 · Under the hood (gnoweb page, then GitHub)
+
+Open the realm on gnoweb (footer link "Realm on gnoweb").
+
+> "Everything also lives on gnoweb: the realm renders its own pages, and every action is a pre-filled transaction link. The realm has 15 tests, and every settlement test checks that coins out equal coins in."
+
+## 2:35 · Close
+
+> "Tavern Wagers. Bet on anything with your friends. The money's locked upfront, neutral judges call it, and the winner gets paid automatically."

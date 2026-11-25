@@ -127,7 +127,7 @@ Onyx parks new packages until its package approver enables them, so the page may
 python3 -m http.server 8080 -d web   # then open http://localhost:8080
 ```
 
-Pick **Testnet** or **Local (gnodev)** in the top bar. The gnoweb pages work on their own too: every action there is a pre-filled transaction link.
+Pick **Testnet**, **Local (gnodev)** or **Demo** in the top bar. Demo mode uses sample data shaped exactly like the realm's JSON (see `web/demo.js`), so anyone can click through every screen, including a live dispute and an open group bet, without a wallet. The hosted app falls back to it automatically while the testnet package waits for approval. The gnoweb pages work on their own too: every action there is a pre-filled transaction link.
 
 ## Run it locally
 
@@ -144,7 +144,7 @@ bash scripts/demo-scenario.sh      # plays a full story: honest bet, a lie caugh
 
 ## Tests
 
-`wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, JSON views, page rendering, and group bets (agreed winner-takes-all, a disputed 60/40 split with a liar, validation and cancellation). Every settlement test checks that the coins paid out equal the coins paid in.
+`wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, declines, stake limits, JSON views, page rendering, and group bets (agreed winner-takes-all, a disputed 60/40 split with a liar, validation and cancellation). Every settlement test checks that the coins paid out equal the coins paid in.
 
 ## Security notes
 
