@@ -225,6 +225,24 @@ async function pageTable(id) {
         <button class="btn" id="b-go">Lock & challenge</button>
       </div>
       <p class="muted small" id="b-total"></p>
+    </div>
+    <div class="card">
+      <b>🃏 New group bet</b> <span class="muted small">poker night, tournaments, quizzes: 3+ players</span>
+      <div class="row" style="margin-top:10px">
+        <div class="field"><label>What's the game?</label><input id="p-title" placeholder="Friday poker, $5 buy-in" maxlength="140"></div>
+        <div class="field" style="max-width:140px"><label>Stake each (GNOT)</label><input id="p-stake" type="number" min="0.01" step="0.01" value="1"></div>
+        <div class="field" style="max-width:220px"><label>Payout</label>
+          <select id="p-payout">
+            <option value="100">Winner takes all</option>
+            <option value="60,40">Top 2 · 60/40</option>
+            <option value="50,30,20">Top 3 · 50/30/20</option>
+          </select></div>
+      </div>
+      <div class="field" style="margin-top:10px"><label>Who's playing? (you're in automatically)</label>
+        <div class="checks">${t.members.filter((m) => m.address !== me).map((m) => `
+          <label class="check"><input type="checkbox" value="${m.address}"> ${esc(m.nick || short(m.address))}</label>`).join("")}</div>
+      </div>
+      <div class="actions"><button class="btn" id="p-go">Lock & invite</button></div>
     </div>` : me ? `<p class="hint">You're not at this table. Ask ${esc(nick(t.owner))} to add you.</p>` : `<p class="hint">Connect your wallet to bet at this table.</p>`}
 
     <h2>🏆 Leaderboard</h2>
@@ -240,6 +258,17 @@ async function pageTable(id) {
           <td>${m.judged}</td>
         </tr>`).join("")}
     </table></div>
+
+    ${t.pools.length ? `<h2>🃏 Group bets</h2><div class="card"><table>
+      <tr><th>Game</th><th>Players</th><th class="num">Stake</th><th>Status</th></tr>
+      ${t.pools.map((p) => `
+        <tr>
+          <td><a href="#/pool/${p.id}">${esc(p.title)}</a></td>
+          <td>${p.players.length}</td>
+          <td class="num">${gnot(p.stake)}</td>
+          <td>${poolPill(p, nick)}</td>
+        </tr>`).join("")}
+    </table></div>` : ""}
 
     <h2>🎲 Bets</h2>
     ${t.bets.length ? `<div class="card"><table>
@@ -281,6 +310,15 @@ async function pageTable(id) {
       call("CreateBet", [id, $("#b-title").value, $("#b-opp").value, s], s + Math.floor(s / BOND_PCT));
     };
     $("#n-go").onclick = () => call("SetNickname", [id, $("#n-nick").value]);
+    $("#p-go").onclick = () => {
+      const s = toUgnot($("#p-stake").value);
+      if (!s) return toast("Enter a stake", "err");
+      const picked = [...app.querySelectorAll(".checks input:checked")].map((el) => el.value);
+      const places = $("#p-payout").value.split(",").length;
+      if (picked.length < 2) return toast("Pick at least 2 other players", "err");
+      if (places >= picked.length + 1) return toast("Too many paid places for this many players", "err");
+      call("CreatePool", [id, $("#p-title").value, picked.join(","), s, $("#p-payout").value], s + Math.floor(s / BOND_PCT));
+    };
   }
   if (isOwner) $("#m-go").onclick = () => call("AddMember", [id, $("#m-addr").value.trim(), $("#m-nick").value]);
 }
@@ -375,6 +413,109 @@ async function pageBet(id) {
   });
 }
 
+async function pagePool(id) {
+  const p = await qeval(`PoolJSON(${id})`);
+  const t = await qeval(`TableJSON(${p.tableId})`);
+  const nick = nicker(t);
+  const me = state.account;
+  const lock = p.stake + p.bond;
+  const pot = p.stake * p.players.length;
+  const mePlayer = p.players.find((x) => x.address === me);
+  const judge = p.judges.find((j) => j.address === me);
+  const rankText = (r) => r ? r.split(",").map((a, i) => `${place(i)} ${esc(nick(a))}`).join(" · ") : "—";
+  const final = p.final ? p.final.split(",") : [];
+  const places = p.shares.length;
+  const pickers = (prefix) => `<div class="row">${p.shares.map((sh, i) => `
+      <div class="field" style="max-width:220px"><label>${place(i)} (${sh}%)</label>
+        <select id="${prefix}-${i}">${p.players.map((x) => `<option value="${x.address}">${esc(nick(x.address))}</option>`).join("")}</select></div>`).join("")}
+      <button class="btn" id="${prefix}-go">${prefix === "r" ? "Report" : "Vote"}</button></div>`;
+  const picked = (prefix) => p.shares.map((_, i) => $(`#${prefix}-${i}`).value);
+
+  let actions = "";
+  if (p.status === "open") {
+    const joined = p.players.filter((x) => x.joined).length;
+    actions = `<div class="hint">👉 ${joined}/${p.players.length} players have locked their stake. The game goes live when everyone's in.</div>
+      <div class="actions">
+        ${mePlayer && !mePlayer.joined ? `<button class="btn green" data-do="join">✅ Join & lock ${gnot(lock)}</button>` : ""}
+        ${me === p.creator ? `<button class="btn ghost" data-do="cancel">Cancel & refund everyone</button>` : ""}
+      </div>`;
+  } else if (p.status === "live") {
+    const left = p.players.filter((x) => !x.report).map((x) => nick(x.address));
+    actions = `<div class="hint">👉 Game on! When it's over, every player reports the top ${places === 1 ? "finisher" : places}.
+      ${left.length < p.players.length ? `Still waiting for: <b>${left.map(esc).join(", ")}</b>` : ""}</div>`;
+    if (mePlayer && !mePlayer.report) actions += pickers("r");
+    if (mePlayer && mePlayer.report && p.firstReportAt) {
+      const due = new Date(Date.parse(p.firstReportAt) + 24 * 3600 * 1000);
+      actions += `<p class="muted small">If someone still hasn't reported by ${due.toLocaleString()}, you can
+        <button class="btn sm ghost" data-do="escalate">send it to the judges</button></p>`;
+    }
+  } else if (p.status === "disputed") {
+    const need = Math.floor(p.judges.length / 2) + 1;
+    actions = `<div class="hint">⚖️ The players don't agree on the result. The judges decide: ${need} of ${p.judges.length} matching votes needed.
+      Voting closes ${new Date(p.deadline).toLocaleString()}.</div>`;
+    if (judge && !judge.vote) actions += pickers("v");
+    if (Date.now() > Date.parse(p.deadline)) actions += `<div class="actions"><button class="btn ghost" data-do="expire">No majority: refund everyone</button></div>`;
+  }
+
+  app.innerHTML = `
+    <a class="back" href="#/table/${t.id}">← ${esc(t.name)}</a>
+    <h1>🃏 ${esc(p.title)}</h1>
+    <p>${poolPill(p, nick)}</p>
+    <p class="muted">${p.players.length} players · ${gnot(p.stake)} each · bond ${gnot(p.bond)} each · pot <b style="color:var(--text)">${gnot(pot)}</b>
+      · payout ${p.shares.map((sh, i) => `${place(i)} ${sh}%`).join(" / ")}</p>
+
+    ${actions}
+
+    <h2>Players</h2>
+    <div class="card"><table>
+      <tr><th>Player</th><th>Stake</th><th>Reported</th></tr>
+      ${p.players.map((x) => `<tr class="${final[0] === x.address ? "winrow" : ""}">
+        <td><b>${esc(nick(x.address))}</b>${final[0] === x.address ? " 🏆" : ""}${x.address === me ? ` <span class="muted small">(you)</span>` : ""}</td>
+        <td>${x.joined ? "✅ locked" : `<span class="muted">⏳ not yet</span>`}</td>
+        <td class="small">${rankText(x.report)}</td></tr>`).join("")}
+    </table></div>
+
+    ${p.judges.length ? `<h2>⚖️ Judges</h2>
+      <p class="muted small">The table members who didn't play. Only used if players disagree.</p>
+      <div class="card"><table>${p.judges.map((j) => `<tr><td><b>${esc(nick(j.address))}</b></td><td class="small">${j.vote ? rankText(j.vote) : `<span class="muted">not voted</span>`}</td></tr>`).join("")}</table></div>` : ""}
+
+    ${p.payouts.length ? `<h2>💸 Payouts</h2>
+      <div class="card"><table>
+        <tr><th>To</th><th class="num">Amount</th><th>Why</th></tr>
+        ${p.payouts.map((x) => `<tr><td><b>${esc(nick(x.to))}</b></td><td class="num">${gnot(x.amount)}</td><td class="muted">${esc(x.why)}</td></tr>`).join("")}
+      </table></div>` : ""}`;
+
+  if ($("#r-go")) $("#r-go").onclick = () => call("ReportPool", [id, picked("r").join(",")]);
+  if ($("#v-go")) $("#v-go").onclick = () => call("VotePool", [id, picked("v").join(",")]);
+  // Pre-select different players in each place.
+  ["r", "v"].forEach((prefix) => p.shares.forEach((_, i) => {
+    const el = $(`#${prefix}-${i}`);
+    if (el && p.players[i]) el.value = p.players[i].address;
+  }));
+  app.querySelectorAll("[data-do]").forEach((el) => el.onclick = () => {
+    const d = el.dataset.do;
+    if (d === "join") call("JoinPool", [id], lock);
+    if (d === "cancel") call("CancelPool", [id]);
+    if (d === "escalate") call("EscalatePool", [id]);
+    if (d === "expire") call("ExpirePool", [id]);
+  });
+}
+
+function place(i) { return ["1st", "2nd", "3rd"][i] || `${i + 1}th`; }
+
+function poolPill(p, nick) {
+  const joined = p.players.filter((x) => x.joined).length;
+  const text = {
+    open: `🟡 ${joined}/${p.players.length} joined`,
+    live: "🟢 live",
+    disputed: "⚖️ judges voting",
+    settled: `🏆 ${p.final ? nick(p.final.split(",")[0]) + " won" : "settled"}`,
+    cancelled: "❌ cancelled",
+    refunded: "↩️ refunded",
+  }[p.status] || p.status;
+  return `<span class="pill ${p.status}">${esc(text)}</span>`;
+}
+
 // ---------------------------------------------------------------------------
 // Router
 
@@ -383,6 +524,7 @@ async function route() {
   try {
     if (parts[0] === "table" && parts[1]) await pageTable(parseInt(parts[1], 10));
     else if (parts[0] === "bet" && parts[1]) await pageBet(parseInt(parts[1], 10));
+    else if (parts[0] === "pool" && parts[1]) await pagePool(parseInt(parts[1], 10));
     else await pageHome();
   } catch (e) {
     if (e.message === "NOT_ENABLED") {
