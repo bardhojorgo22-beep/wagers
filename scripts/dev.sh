@@ -9,4 +9,6 @@ for n in demo-alice demo-bob demo-judge1 demo-judge2 demo-judge3; do
   [ -n "$addr" ] || { echo "missing key $n: run scripts/demo-keys.sh first"; exit 1; }
   ACCOUNTS+=(-add-account "$addr=1000000000000ugnot")
 done
+# Also fund the project wallet so it can be used through Adena locally.
+ACCOUNTS+=(-add-account "g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx=1000000000000ugnot")
 exec gnodev "${ACCOUNTS[@]}" .
