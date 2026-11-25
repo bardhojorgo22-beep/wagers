@@ -15,6 +15,7 @@ Everything renders on gnoweb: tables with leaderboards, bet pages with reports, 
 **Gno component:** the realm `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2` (escrow, dispute voting, bond settlement, leaderboards, gnoweb rendering). 9 unit tests cover agreed results, disputes, draws, expired votes, no-shows, cancellations, validation, nicknames and rendering, and every settlement test checks that coins out equal coins in.
 
 **Links:**
+- Web app: https://tavern-wagers.vercel.app
 - Repo: https://github.com/bardhojorgo22-beep/wagers
 - Live: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2
 - Demo video: (add link)

@@ -4,6 +4,8 @@
 
 Built on [Gno.land](https://gno.land) for the Gnome Tavern hackathon.
 
+**Web app:** https://tavern-wagers.vercel.app · **Realm:** https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2
+
 ## The problem
 
 Friendly bets ("I'll beat you at chess", "Arsenal wins Saturday") break down in three ways:
