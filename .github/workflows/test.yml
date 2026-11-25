@@ -25,5 +25,5 @@ jobs:
           GNOROOT: ${{ env.HOME }}/gno
         run: |
           export GNOROOT="$HOME/gno"
-          "$HOME/bin/gno" test -v . 2>&1 | grep -E "^(=== RUN|--- (PASS|FAIL))|^ok|FAIL|panic" || true
+          "$HOME/bin/gno" test -v -run TestPreviewPages . 2>&1 || true
           "$HOME/bin/gno" test .
