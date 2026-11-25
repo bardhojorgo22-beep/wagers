@@ -26,11 +26,12 @@ The realm takes **no cut**. Every coin that goes in comes back out to players an
 ## How it works
 
 1. **Open a table** and add your friends with nicknames.
-2. **Make a bet** against a friend at the table. You lock `stake + 10% bond`.
+2. **Make a bet** against a friend at the table (hit 🎲 Challenge next to their name). You lock `stake + 10% bond`.
 3. Your friend **accepts** by locking the same amount.
 4. After the game, **both players report** `a`, `b` or `draw`.
    - **Same report:** paid instantly, both bonds back, no fees.
    - **Different reports:** the bet goes to the judges.
+   - The judges are **fixed when the bet is accepted**: every other member of the table at that moment. Both players see the panel before locking money, and nobody can add friends later to swing a vote.
 5. **Judges vote.** The moment one result has a strict majority, the bet settles:
    - The pot goes to the winner (or back to both players on a draw), minus a **1% judge fee**.
    - A player whose report lost the vote **forfeits their bond**: half to the honest player, half to the judges.
@@ -66,7 +67,7 @@ Total paid out: 11 GNOT = exactly what went in.
 | `CreateTable(name, nickname)` | anyone | opens a table, you're the owner |
 | `AddMember(tableID, address, nickname)` | table owner | adds a friend |
 | `SetNickname(tableID, nickname)` | member | changes your nickname |
-| `CreateBet(tableID, title, opponent, stake)` + send `stake*1.1` ugnot | member | challenges another member |
+| `CreateBet(tableID, title, opponentName, stake)` + send `stake*1.1` ugnot | member | challenges another member by nickname (or address) |
 | `AcceptBet(betID)` + send `stake*1.1` ugnot | player B | accepts the challenge |
 | `CancelBet(betID)` | player A | takes back an unaccepted bet |
 | `Report(betID, "a"/"b"/"draw")` | players | reports the result |
@@ -99,7 +100,7 @@ bash scripts/demo-scenario.sh      # plays a full story: honest bet, a lie caugh
 
 ## Tests
 
-`wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames and page rendering. Every settlement test checks that the coins paid out equal the coins paid in.
+`wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, and page rendering. Every settlement test checks that the coins paid out equal the coins paid in.
 
 ## Limits (honest ones)
 

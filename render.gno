@@ -50,13 +50,21 @@ func renderHome() string {
 	sb.WriteString("The realm keeps nothing. Every coin that goes in comes back out to players and judges.\n\n")
 	sb.WriteString("[➕ Open a new table](" + call("CreateTable") + ")\n\n")
 
+	sb.WriteString("**" + strconv.Itoa(tables.Size()) + "** tables · **" + strconv.Itoa(bets.Size()) +
+		"** bets · **" + strconv.Itoa(totalSettled) + "** settled · **" + gnot(totalLocked, false) + "** locked all time\n\n")
+
 	sb.WriteString("## Tables\n\n")
 	if tables.Size() == 0 {
 		sb.WriteString("_No tables yet. Be the first._\n")
 		return sb.String()
 	}
 	sb.WriteString("| Table | Members | Bets | Owner |\n|---|---|---|---|\n")
+	shown := 0
 	tables.ReverseIterate("", "", func(_ string, v any) bool {
+		shown++
+		if shown > 30 {
+			return true // newest 30 only
+		}
 		t := v.(*Table)
 		sb.WriteString("| [" + escape(t.Name) + "](" + page("table/"+strconv.Itoa(t.ID)) + ") | " +
 			strconv.Itoa(len(t.Members)) + " | " + strconv.Itoa(len(t.BetIDs)) + " | " + who(t, t.Owner) + " |\n")
@@ -90,7 +98,7 @@ func renderTable(t *Table) string {
 			rows[j], rows[j-1] = rows[j-1], rows[j]
 		}
 	}
-	sb.WriteString("| # | Member | Net | W | L | D | Disputes lost | Judged |\n|---|---|---|---|---|---|---|---|\n")
+	sb.WriteString("| # | Member | Net | W | L | D | Disputes lost | Judged | |\n|---|---|---|---|---|---|---|---|---|\n")
 	for i, r := range rows {
 		liar := strconv.Itoa(r.s.DisputesLost)
 		if r.s.DisputesLost > 0 {
@@ -98,7 +106,7 @@ func renderTable(t *Table) string {
 		}
 		sb.WriteString("| " + strconv.Itoa(i+1) + " | " + who(t, r.addr) + " | " + gnot(r.s.Net, true) + " | " +
 			strconv.Itoa(r.s.Wins) + " | " + strconv.Itoa(r.s.Losses) + " | " + strconv.Itoa(r.s.Draws) + " | " +
-			liar + " | " + strconv.Itoa(r.s.Judged) + " |\n")
+			liar + " | " + strconv.Itoa(r.s.Judged) + " | [🎲 Challenge](" + challenge(t, r.addr) + ") |\n")
 	}
 
 	sb.WriteString("\n## 🎲 Bets\n\n")
@@ -107,7 +115,7 @@ func renderTable(t *Table) string {
 		return sb.String()
 	}
 	sb.WriteString("| Bet | Players | Stake | Status |\n|---|---|---|---|\n")
-	for i := len(t.BetIDs) - 1; i >= 0; i-- {
+	for i := len(t.BetIDs) - 1; i >= 0 && i >= len(t.BetIDs)-30; i-- { // newest 30
 		b := mustBet(t.BetIDs[i])
 		sb.WriteString("| [" + escape(b.Title) + "](" + page("bet/"+strconv.Itoa(b.ID)) + ") | " +
 			who(t, b.PlayerA) + " vs " + who(t, b.PlayerB) + " | " + gnot(b.Stake, false) + " | " + statusBadge(t, b) + " |\n")
@@ -122,6 +130,9 @@ func renderBet(b *Bet) string {
 	sb.WriteString("[← " + escape(t.Name) + "](" + page("table/"+strconv.Itoa(t.ID)) + ")\n\n")
 	sb.WriteString("# 🎲 " + escape(b.Title) + "\n\n")
 	sb.WriteString("**Status: " + statusBadge(t, b) + "**\n\n")
+	if hint := nextStep(t, b); hint != "" {
+		sb.WriteString("> 👉 " + hint + "\n\n")
+	}
 
 	sb.WriteString("| | Player A | Player B |\n|---|---|---|\n")
 	sb.WriteString("| Who | " + who(t, b.PlayerA) + " | " + who(t, b.PlayerB) + " |\n")
@@ -161,8 +172,19 @@ func renderBet(b *Bet) string {
 		sb.WriteString("_No majority by the deadline? Anyone can [refund everyone](" + call("ExpireDispute", "betID", id) + ")._\n")
 	}
 
+	if b.Status == StatusOpen {
+		preview := t.judgesFor(b.PlayerA, b.PlayerB)
+		sb.WriteString("\n### ⚖️ Judges if accepted\n\n")
+		if len(preview) == 0 {
+			sb.WriteString("_Nobody else is at this table, so a disagreement would be refunded._\n")
+		}
+		for _, j := range preview {
+			sb.WriteString("- " + who(t, j) + "\n")
+		}
+	}
+
 	if len(b.Judges) > 0 {
-		sb.WriteString("\n### Judges\n\n")
+		sb.WriteString("\n### ⚖️ Judges\n\n_Fixed when the bet was accepted. Only used if the players disagree._\n\n")
 		for _, j := range b.Judges {
 			vote := "not voted"
 			if v, ok := b.Votes.Get(j.String()).(string); ok {
@@ -184,6 +206,35 @@ func renderBet(b *Bet) string {
 type row struct {
 	addr address
 	s    *Stats
+}
+
+// nextStep tells visitors what the bet is waiting for.
+func nextStep(t *Table, b *Bet) string {
+	switch b.Status {
+	case StatusOpen:
+		return "Waiting for " + plain(t, b.PlayerB) + " to accept and lock " + gnot(b.Stake+b.Bond, false) + "."
+	case StatusLive:
+		switch {
+		case b.ReportA == "" && b.ReportB == "":
+			return "Game on! After the game, both " + plain(t, b.PlayerA) + " and " + plain(t, b.PlayerB) + " report the result."
+		case b.ReportA == "":
+			return "Waiting for " + plain(t, b.PlayerA) + " to report."
+		default:
+			return "Waiting for " + plain(t, b.PlayerB) + " to report."
+		}
+	case StatusDisputed:
+		return "The players disagree. Judges, it's your call."
+	}
+	return ""
+}
+
+// challenge links to CreateBet with the table and opponent filled in.
+func challenge(t *Table, a address) string {
+	name := t.Nick(a)
+	if name == "" {
+		name = a.String()
+	}
+	return call("CreateBet", "tableID", strconv.Itoa(t.ID), "opponentName", name)
 }
 
 // ---------------------------------------------------------------------------

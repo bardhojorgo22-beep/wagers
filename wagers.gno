@@ -125,6 +125,9 @@ var (
 	bets     avl.Tree // id -> *Bet
 	tableSeq int
 	betSeq   int
+
+	totalLocked  int64 // ugnot locked in accepted bets, all time
+	totalSettled int   // bets settled (paid out to a winner or draw)
 )
 
 // ---------------------------------------------------------------------------
@@ -178,9 +181,11 @@ func SetNickname(cur realm, tableID int, nickname string) {
 // Bets
 
 // CreateBet proposes a bet against another table member and locks your stake.
+// opponent is their nickname at the table (or their g1... address).
 // Send exactly stake + 10% bond, e.g. stake 1000000 -> send 1100000ugnot.
-// You are player A, the opponent is player B.
-func CreateBet(cur realm, tableID int, title string, opponent address, stake int64) int {
+// You are player A, the opponent is player B. The judges are fixed when
+// the bet is accepted: every other member of the table at that moment.
+func CreateBet(cur realm, tableID int, title string, opponentName string, stake int64) int {
 	require(cur.Previous().IsUserCall(), "only direct user calls accepted")
 	caller := cur.Previous().Address()
 	t := mustTable(tableID)
@@ -188,7 +193,7 @@ func CreateBet(cur realm, tableID int, title string, opponent address, stake int
 	require(title != "", "bet title required")
 	require(len(title) <= 140, "bet title too long (max 140)")
 	require(t.isMember(caller), "you are not a member of this table")
-	require(t.isMember(opponent), "opponent is not a member of this table")
+	opponent := t.resolve(opponentName)
 	require(opponent != caller, "you can't bet against yourself")
 	require(stake >= MinStake, "stake too small (min "+strconv.FormatInt(MinStake, 10)+"ugnot)")
 
@@ -222,6 +227,8 @@ func AcceptBet(cur realm, betID int) {
 	require(caller == b.PlayerB, "only the challenged player can accept")
 	requireSent(b.Stake + b.Bond)
 	b.Status = StatusLive
+	b.Judges = mustTable(b.TableID).judgesFor(b.PlayerA, b.PlayerB)
+	totalLocked += 2 * (b.Stake + b.Bond)
 }
 
 // CancelBet lets player A take the bet back before B accepts it.
@@ -327,18 +334,10 @@ func ExpireDispute(cur realm, betID int) {
 // openDispute snapshots the judges. It returns false if the bet had to be
 // refunded instead (a table with no possible judges).
 func (b *Bet) openDispute() bool {
-	t := mustTable(b.TableID)
-	var judges []address
-	for _, m := range t.Members {
-		if m != b.PlayerA && m != b.PlayerB {
-			judges = append(judges, m)
-		}
-	}
-	if len(judges) == 0 {
+	if len(b.Judges) == 0 {
 		b.refundAll("no judges at this table")
 		return false
 	}
-	b.Judges = judges
 	b.Status = StatusDisputed
 	b.Deadline = time.Now().Add(VoteWindow)
 	return true
@@ -357,6 +356,7 @@ func (b *Bet) refundAll(why string) {
 // majority is nil when the players agreed (no judges involved).
 func (b *Bet) settle(final string, majority []address) {
 	b.Status = StatusSettled
+	totalSettled++
 	b.Final = final
 	pot := 2 * b.Stake
 
@@ -535,6 +535,39 @@ func (t *Table) Nick(a address) string {
 		return v.(string)
 	}
 	return ""
+}
+
+// judgesFor lists every member except the two players.
+func (t *Table) judgesFor(a, b address) []address {
+	var judges []address
+	for _, m := range t.Members {
+		if m != a && m != b {
+			judges = append(judges, m)
+		}
+	}
+	return judges
+}
+
+// resolve finds a member by nickname (case-insensitive) or g1 address.
+func (t *Table) resolve(who string) address {
+	who = strings.TrimSpace(who)
+	if strings.HasPrefix(who, "g1") {
+		if a := address(who); a.IsValid() {
+			require(t.isMember(a), "opponent is not a member of this table")
+			return a
+		}
+	}
+	lower := strings.ToLower(who)
+	var found address
+	t.Names.Iterate("", "", func(k string, v any) bool {
+		if strings.ToLower(v.(string)) == lower {
+			found = address(k)
+			return true
+		}
+		return false
+	})
+	require(found != "" && t.isMember(found), "opponent is not a member of this table")
+	return found
 }
 
 func (t *Table) stats(a address) *Stats {

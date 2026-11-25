@@ -39,13 +39,13 @@ call demo-alice AddMember "" 1 "$J2" "Sara"
 call demo-alice AddMember "" 1 "$J3" "Leo"
 
 # Bet 1: everyone honest.
-call demo-alice CreateBet "$SEND" 1 "Alice beats Bob, 10 min blitz" "$BOB" "$STAKE"
+call demo-alice CreateBet "$SEND" 1 "Alice beats Bob, 10 min blitz" "Bob" "$STAKE"
 call demo-bob   AcceptBet "$SEND" 1
 call demo-alice Report "" 1 a
 call demo-bob   Report "" 1 a
 
 # Bet 2: bob lies, judges catch him.
-call demo-alice CreateBet "$SEND" 1 "Rematch: Alice wins again" "$BOB" "$STAKE"
+call demo-alice CreateBet "$SEND" 1 "Rematch: Alice wins again" "Bob" "$STAKE"
 call demo-bob   AcceptBet "$SEND" 2
 call demo-alice Report "" 2 a
 call demo-bob   Report "" 2 b
@@ -53,7 +53,7 @@ call demo-judge1 Vote "" 2 a
 call demo-judge2 Vote "" 2 a
 
 # Bet 3: open challenge, waiting for Leo to accept.
-call demo-bob CreateBet "$SEND" 1 "Bob beats Leo at FIFA" "$J3" "$STAKE"
+call demo-bob CreateBet "$SEND" 1 "Bob beats Leo at FIFA" "Leo" "$STAKE"
 
 echo
 echo "Done. Open: http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers"
