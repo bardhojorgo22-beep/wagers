@@ -4,7 +4,7 @@
 
 Built on [Gno.land](https://gno.land) for the Gnome Tavern hackathon.
 
-**Web app:** https://tavern-wagers.vercel.app · **Realm:** https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v3
+**Web app:** https://tavern-wagers.vercel.app · **Realm:** https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4
 
 ## The problem
 
@@ -100,9 +100,9 @@ Pages: `:` (home), `:table/<id>`, `:bet/<id>`, `:pool/<id>`.
 ## Deployment
 
 - Network: Gno.land testnet **onyx-1**
-- Realm: `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v3`
-- Page: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v3
-- Submitted in block **1391074**, tx `7uehzZGkDL2HxwfAxA7hVPNEzLGEOfDoYNrduhfGVSc=`
+- Realm: `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4`
+- Page: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4
+- Submitted: (pending)
 
 Onyx parks new packages until its package approver enables them, so the page may show "Not Yet Enabled" for a while after deploying.
 
@@ -126,7 +126,7 @@ bash scripts/demo-keys.sh          # creates 5 demo accounts (once)
 bash scripts/dev.sh                # starts the local chain; leave it running
 # in another terminal:
 bash scripts/demo-scenario.sh      # plays a full story: honest bet, a lie caught by judges, an open challenge
-# open http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v3
+# open http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4
 ```
 
 ## Tests

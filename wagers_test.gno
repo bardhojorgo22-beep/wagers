@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	pkgAddr = chain.PackageAddress("gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v3")
+	pkgAddr = chain.PackageAddress("gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4")
 	alice   = testutils.TestAddress("alice")
 	bob     = testutils.TestAddress("bob")
 	judge1  = testutils.TestAddress("judge1")
