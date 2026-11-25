@@ -364,7 +364,11 @@ async function pageTable(id) {
   if (isMember) {
     const total = () => {
       const s = toUgnot($("#b-stake").value);
-      $("#b-total").textContent = s ? `You'll lock ${gnot(s + Math.floor(s / BOND_PCT))} (stake + ${BOND_PCT}% bond). Your opponent locks the same when they accept.` : "";
+      const judges = t.members.length - 2;
+      const j = judges >= 3 ? `⚖️ ${judges} judges if you disagree.` : judges > 0
+        ? `⚠️ Only ${judges} ${judges === 1 ? "judge" : "judges"} if you disagree: add more friends to the table for safer disputes.`
+        : `⚠️ No judges at this table: a disagreement just refunds both of you.`;
+      $("#b-total").textContent = s ? `You'll lock ${gnot(s + Math.floor(s / BOND_PCT))} (stake + ${BOND_PCT}% bond). Your opponent locks the same when they accept. ${j}` : "";
     };
     $("#b-stake").oninput = total;
     total();
