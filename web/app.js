@@ -54,7 +54,7 @@ async function qeval(expr) {
   const raw = r.ResponseBase?.Data ? decodeURIComponent(escape(atob(r.ResponseBase.Data))) : "";
   if (err) {
     const log = r.ResponseBase?.Log || "";
-    if (/not enabled|inert|approver/i.test(log + raw)) throw new Error("NOT_ENABLED");
+    if (/not enabled|inert|approver|package not found|InvalidPkgPath/i.test(log + raw)) throw new Error("NOT_ENABLED");
     throw new Error(friendlyError(log || JSON.stringify(err)));
   }
   // Data looks like: ("<go-quoted string>" string)\n\n
@@ -151,7 +151,7 @@ async function pageHome() {
         <p class="lead">The money's locked upfront, neutral judges call it, and the winner gets paid automatically. No more "I'll pay you later."</p>
         <div class="actions">
           <button class="btn" id="new-table">➕ Open a table</button>
-          <a class="btn ghost" href="#how">How it works</a>
+          <button class="btn ghost" id="how-btn">How it works</button>
         </div>
       </div>
       <div class="card">
@@ -178,6 +178,7 @@ async function pageHome() {
       <div class="card step"><span class="n">3 · JUDGE</span><b>Disagree? Friends decide.</b><span>Everyone else at the table judges. A strict majority wins. The liar loses their bond and gets a 🚩.</span></div>
     </div>`;
 
+  $("#how-btn").onclick = () => $("#how").scrollIntoView({ behavior: "smooth" });
   $("#new-table").onclick = () => {
     $("#create-form").innerHTML = `
       <div class="card">
@@ -386,7 +387,8 @@ async function route() {
     if (e.message === "NOT_ENABLED") {
       app.innerHTML = `<h1>Almost there 🍺</h1>
         <p class="lead">The realm is deployed on ${esc(net().label)}, but the network hasn't enabled it yet.
-        New packages on this testnet wait for an approver. Try again later, or switch to Local.</p>`;
+        New packages on this testnet wait for an approver. Try again later, or switch to Local.</p>
+        <p><button class="btn ghost" onclick="document.querySelector('#network').value='local';document.querySelector('#network').onchange()">Switch to Local</button></p>`;
     } else if (/not found/i.test(e.message)) {
       app.innerHTML = `<a class="back" href="#/">← Home</a><h1>Not found</h1>`;
     } else {
