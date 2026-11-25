@@ -9,14 +9,14 @@ const NETWORKS = {
     chainId: "onyx-1",
     rpc: "https://rpc.onyx.testnets.gno.land:443",
     gnoweb: "https://onyx.testnets.gno.land",
-    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers`,
+    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers/v2`,
   },
   local: {
     label: "Local (gnodev)",
     chainId: "dev",
     rpc: "http://127.0.0.1:26657",
     gnoweb: "http://localhost:8888",
-    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers`,
+    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers/v2`,
   },
 };
 
@@ -135,7 +135,7 @@ function renderTop() {
   const btn = $("#connect");
   btn.textContent = state.account ? short(state.account) : "Connect Adena";
   btn.classList.toggle("ghost", !!state.account);
-  $("#realm-link").href = `${net().gnoweb}/r/${REALM_OWNER}/tavernwagers`;
+  $("#realm-link").href = `${net().gnoweb}/r/${REALM_OWNER}/tavernwagers/v2`;
 }
 
 // ---------------------------------------------------------------------------

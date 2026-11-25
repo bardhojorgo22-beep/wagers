@@ -12,11 +12,11 @@ Friends form an invite-only table. Two players lock the same stake in the realm 
 
 Everything renders on gnoweb: tables with leaderboards, bet pages with reports, votes and a payout breakdown, and pre-filled action links for every step.
 
-**Gno component:** the realm `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers` (escrow, dispute voting, bond settlement, leaderboards, gnoweb rendering). 9 unit tests cover agreed results, disputes, draws, expired votes, no-shows, cancellations, validation, nicknames and rendering, and every settlement test checks that coins out equal coins in.
+**Gno component:** the realm `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2` (escrow, dispute voting, bond settlement, leaderboards, gnoweb rendering). 9 unit tests cover agreed results, disputes, draws, expired votes, no-shows, cancellations, validation, nicknames and rendering, and every settlement test checks that coins out equal coins in.
 
 **Links:**
 - Repo: https://github.com/bardhojorgo22-beep/wagers
-- Live: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers
+- Live: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2
 - Demo video: (add link)
 
 **Tags:** Gno, Smart Contracts, DeFi, Social, Gaming

@@ -80,9 +80,9 @@ Pages: `:` (home), `:table/<id>`, `:bet/<id>`.
 ## Deployment
 
 - Network: Gno.land testnet **onyx-1**
-- Realm: `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers`
-- Page: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers
-- Submitted in block **1390430**, tx `fEL/NOrLhFy+GHMu98RfB+Qvr5E5MyIRwKL0vKPzack=`
+- Realm: `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2`
+- Page: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2
+- Submitted: (pending)
 
 Onyx parks new packages until its package approver enables them, so the page may show "Not Yet Enabled" for a while after deploying.
 
@@ -106,7 +106,7 @@ bash scripts/demo-keys.sh          # creates 5 demo accounts (once)
 bash scripts/dev.sh                # starts the local chain; leave it running
 # in another terminal:
 bash scripts/demo-scenario.sh      # plays a full story: honest bet, a lie caught by judges, an open challenge
-# open http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers
+# open http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2
 ```
 
 ## Tests
