@@ -53,6 +53,15 @@ flowchart TD
 6. **No majority within 48 hours?** Anyone can trigger a full refund, bonds included.
 7. **No-shows:** if one player reports and the other goes quiet for 24 hours, either player can escalate to the judges.
 
+### The social bits
+
+- **Open challenges:** bet against `anyone` and the first table member to accept plays you.
+- **Decline:** the challenged player can turn a bet down; the challenger is refunded.
+- **Activity feed** per table: challenges, results, disputes and 🚩 rulings, newest first.
+- **Leaderboard honours:** 👑 for the table leader, 🔥 for a 3+ win streak, ⚖️ for trusted judges, 🚩 for lost disputes.
+- **Head-to-head records** and a **🔁 Run it back** rematch button on every settled bet.
+- **Your move** (web app): one list of every bet at your tables that's waiting on you: accept, report, join or judge.
+
 ### Group bets (poker night, tournaments, quizzes)
 
 1v1 isn't enough for a poker night, so Tavern Wagers also does **group bets** for 3 to 20 players.
@@ -92,7 +101,7 @@ Total paid out: 11 GNOT = exactly what went in.
 | `CreateTable(name, nickname)` | anyone | opens a table, you're the owner |
 | `AddMember(tableID, address, nickname)` | table owner | adds a friend |
 | `SetNickname(tableID, nickname)` | member | changes your nickname |
-| `CreateBet(tableID, title, opponentName, stake)` + send `stake*1.1` ugnot | member | challenges another member by nickname (or address) |
+| `CreateBet(tableID, title, opponentName, stake)` + send `stake*1.1` ugnot | member | challenges another member by nickname (or address), or `anyone` for an open challenge |
 | `AcceptBet(betID)` + send `stake*1.1` ugnot | player B | accepts the challenge |
 | `CancelBet(betID)` | player A | takes back an unaccepted bet |
 | `DeclineBet(betID)` | player B | turns the challenge down, A is refunded |
@@ -150,7 +159,7 @@ bash scripts/testnet-demo.sh       # funds the demo accounts from your key, then
 
 ## Tests
 
-`wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, declines, stake limits, JSON views, page rendering, and group bets (agreed winner-takes-all, a disputed 60/40 split with a liar, no-shows, escalation, expiry, validation and cancellation). Every settlement test checks that the coins paid out equal the coins paid in.
+`wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, declines, stake limits, open challenges, win streaks, the activity feed, JSON views, page rendering, and group bets (agreed winner-takes-all, a disputed 60/40 split with a liar, no-shows, escalation, expiry, validation and cancellation). Every settlement test checks that the coins paid out equal the coins paid in.
 
 ## Security notes
 

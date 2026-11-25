@@ -12,11 +12,11 @@ Friends form an invite-only table. Two players lock the same stake in the realm 
 
 It scales past 1v1: group bets for 3-20 players (poker nights, tournaments) pay out by finishing position (winner-takes-all, 60/40, 50/30/20). There's no dealer with all the power: non-players judge disputes, a majority decides, and a game needs at least 3 judges unless the players explicitly accept the risk.
 
-Judges are fixed when a bet is accepted, so nobody can add friends later to swing a vote. Players challenge each other by nickname, get a rematch button and a head-to-head record.
+Judges are fixed when a bet is accepted, so nobody can add friends later to swing a vote. Players challenge each other by nickname (or post an open challenge anyone can take), get a rematch button, a head-to-head record, win streaks and an activity feed per table.
 
 Two ways to use it: a web app (Adena wallet) that only shows the buttons that are your move, and the realm's own gnoweb pages, where every step is a pre-filled transaction link.
 
-**Gno component:** the realm `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5` (escrow, dispute voting, bond settlement, leaderboards, gnoweb rendering, JSON views for the web app). 17 unit tests cover agreed results, disputes, draws, expired votes, no-shows, cancellations, validation, nicknames, judge snapshots, declines, stake limits, JSON, rendering and group bets, and every settlement test checks that coins out equal coins in.
+**Gno component:** the realm `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5` (escrow, dispute voting, bond settlement, leaderboards, gnoweb rendering, JSON views for the web app). 18 unit tests cover agreed results, disputes, draws, expired votes, no-shows, cancellations, validation, nicknames, judge snapshots, declines, stake limits, open challenges, streaks, the activity feed, JSON, rendering and group bets, and every settlement test checks that coins out equal coins in.
 
 **Links:**
 - Web app: https://tavern-wagers.vercel.app (opens in demo mode with sample data until the testnet package is enabled; switch to Testnet in the top bar)
