@@ -92,8 +92,9 @@ Requires the Gno toolchain v1.8.0 (`gno`, `gnokey`, `gnodev`).
 
 ```sh
 gno test -v .                      # unit tests
-bash scripts/demo-keys.sh          # creates 5 demo accounts, prints a gnodev command
-# run the printed gnodev command, then in another terminal:
+bash scripts/demo-keys.sh          # creates 5 demo accounts (once)
+bash scripts/dev.sh                # starts the local chain; leave it running
+# in another terminal:
 bash scripts/demo-scenario.sh      # plays a full story: honest bet, a lie caught by judges, an open challenge
 # open http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers
 ```

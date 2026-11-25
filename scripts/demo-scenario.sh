@@ -29,6 +29,11 @@ call() { # call <key> <func> [send] -- args...
     | grep -E "OK!|Error|Data:" || true
 }
 
+if ! curl -s -o /dev/null "http://$REMOTE/status"; then
+  echo "The local chain isn't running. Start it in another window with: bash scripts/dev.sh"
+  exit 1
+fi
+
 ALICE=$(addr demo-alice); BOB=$(addr demo-bob)
 J1=$(addr demo-judge1); J2=$(addr demo-judge2); J3=$(addr demo-judge3)
 
