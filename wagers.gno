@@ -35,7 +35,8 @@ const (
 	ResultB    = "b"    // player B won
 	ResultDraw = "draw" // draw, stakes go back
 
-	MinStake int64 = 10_000 // 0.01 GNOT
+	MinStake int64 = 10_000              // 0.01 GNOT
+	MaxStake int64 = 1_000_000_000_000_000 // 1 billion GNOT: keeps every pot far from int64 overflow
 
 	ReportWindow = 24 * time.Hour // how long a player has to answer the other's report
 	VoteWindow   = 48 * time.Hour // how long judges have to vote
@@ -202,6 +203,7 @@ func CreateBet(cur realm, tableID int, title string, opponentName string, stake 
 	opponent := t.resolve(opponentName)
 	require(opponent != caller, "you can't bet against yourself")
 	require(stake >= MinStake, "stake too small (min "+strconv.FormatInt(MinStake, 10)+"ugnot)")
+	require(stake <= MaxStake, "stake too large")
 
 	bond := stake / 10
 	requireSent(stake + bond)
@@ -245,6 +247,17 @@ func CancelBet(cur realm, betID int) {
 	require(caller == b.PlayerA, "only the player who created the bet can cancel it")
 	b.Status = StatusCancelled
 	b.Payouts = []Payout{{b.PlayerA, b.Stake + b.Bond, "cancelled, refund"}}
+	pay(banker.NewBanker(banker.BankerTypeRealmSend, cur), cur.Address(), b.Payouts)
+}
+
+// DeclineBet lets player B turn a challenge down. Player A is refunded.
+func DeclineBet(cur realm, betID int) {
+	caller := cur.Previous().Address()
+	b := mustBet(betID)
+	require(b.Status == StatusOpen, "bet is not open")
+	require(caller == b.PlayerB, "only the challenged player can decline")
+	b.Status = StatusCancelled
+	b.Payouts = []Payout{{b.PlayerA, b.Stake + b.Bond, "declined, refund"}}
 	pay(banker.NewBanker(banker.BankerTypeRealmSend, cur), cur.Address(), b.Payouts)
 }
 

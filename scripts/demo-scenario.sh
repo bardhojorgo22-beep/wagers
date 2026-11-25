@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Plays a full demo on a FRESH local gnodev node (run demo-keys.sh first and
 # start gnodev with the command it printed). Afterwards, open
-# http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4
+# http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5
 #
 # Story:
 #   Table "Friday Chess Club": alice (owner), bob, judge1-3.
@@ -11,7 +11,7 @@
 #   Bet 3: left open so the "accept" button shows on the page.
 set -euo pipefail
 
-PKG="gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4"
+PKG="gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5"
 REMOTE="${REMOTE:-127.0.0.1:26657}"
 CHAIN="${CHAIN:-dev}"
 STAKE=5000000            # 5 GNOT
@@ -71,4 +71,4 @@ call demo-judge3 ReportPool "" 1 "Leo"
 call demo-bob CreateBet "$SEND" 1 "Bob beats Leo at FIFA" "Leo" "$STAKE"
 
 echo
-echo "Done. Open: http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4"
+echo "Done. Open: http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5"

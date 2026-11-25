@@ -181,6 +181,7 @@ func renderBet(b *Bet) string {
 		sb.WriteString("### Actions\n\n")
 		sb.WriteString("- Player B: [✅ Accept and lock " + gnot(b.Stake+b.Bond, false) + "](" +
 			callSend("AcceptBet", send, "betID", id) + ")\n")
+		sb.WriteString("- Player B: [🙅 Decline](" + call("DeclineBet", "betID", id) + ")\n")
 		sb.WriteString("- Player A: [❌ Cancel and refund](" + call("CancelBet", "betID", id) + ")\n")
 	case StatusLive:
 		sb.WriteString("### Report the result\n\n")

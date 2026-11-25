@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	pkgAddr = chain.PackageAddress("gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4")
+	pkgAddr = chain.PackageAddress("gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5")
 	alice   = testutils.TestAddress("alice")
 	bob     = testutils.TestAddress("bob")
 	judge1  = testutils.TestAddress("judge1")
@@ -302,6 +302,28 @@ func TestCancelAndValidation(cur realm, t *testing.T) {
 	testing.SetRealm(testing.NewUserRealm(alice))
 	testing.SetOriginSend(nil)
 	CancelBet(cross(cur), bid)
+	uassert.Equal(t, "cancelled", GetBetStatus(bid))
+	uassert.Equal(t, a0+stake+bond, balance(alice))
+}
+
+func TestDeclineAndMaxStake(cur realm, t *testing.T) {
+	testing.IssueCoins(pkgAddr, chain.Coins{{"ugnot", 100_000_000}})
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(nil)
+	tid := CreateTable(cross(cur), "Decline table", "Alice")
+	AddMember(cross(cur), tid, bob, "Bob")
+
+	testing.SetOriginSend(chain.Coins{{"ugnot", MaxStake + 1 + (MaxStake+1)/10}})
+	uassert.AbortsWithMessage(t, cur, "stake too large", func() { CreateBet(cross(cur), tid, "huge", "Bob", MaxStake+1) })
+
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	bid := CreateBet(cross(cur), tid, "decline me", "Bob", stake)
+	testing.SetOriginSend(nil)
+	uassert.AbortsWithMessage(t, cur, "only the challenged player can decline", func() { DeclineBet(cross(cur), bid) })
+
+	a0 := balance(alice)
+	testing.SetRealm(testing.NewUserRealm(bob))
+	DeclineBet(cross(cur), bid)
 	uassert.Equal(t, "cancelled", GetBetStatus(bid))
 	uassert.Equal(t, a0+stake+bond, balance(alice))
 }

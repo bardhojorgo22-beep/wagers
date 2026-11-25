@@ -74,6 +74,7 @@ func CreatePool(cur realm, tableID int, title string, players string, stake int6
 	require(printable(title), "title has invalid characters")
 	require(t.isMember(caller), "you are not a member of this table")
 	require(stake >= MinStake, "stake too small (min "+strconv.FormatInt(MinStake, 10)+"ugnot)")
+	require(stake <= MaxStake, "stake too large")
 
 	list := []address{caller}
 	for _, name := range strings.Split(players, ",") {

@@ -9,7 +9,7 @@ const NETWORKS = {
     chainId: "onyx-1",
     rpc: "https://rpc.onyx.testnets.gno.land:443",
     gnoweb: "https://onyx.testnets.gno.land",
-    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers/v4`,
+    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers/v5`,
   },
   demo: {
     label: "Demo (sample data)",
@@ -17,14 +17,14 @@ const NETWORKS = {
     chainId: "",
     rpc: "",
     gnoweb: "https://onyx.testnets.gno.land",
-    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers/v4`,
+    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers/v5`,
   },
   local: {
     label: "Local (gnodev)",
     chainId: "dev",
     rpc: "http://127.0.0.1:26657",
     gnoweb: "http://localhost:8888",
-    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers/v4`,
+    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers/v5`,
   },
 };
 
@@ -175,7 +175,7 @@ function renderTop() {
   const banner = $("#demo-banner");
   if (banner) banner.hidden = !net().demo;
   btn.classList.toggle("ghost", !!state.account);
-  $("#realm-link").href = `${net().gnoweb}/r/${REALM_OWNER}/tavernwagers/v4`;
+  $("#realm-link").href = `${net().gnoweb}/r/${REALM_OWNER}/tavernwagers/v5`;
 }
 
 // ---------------------------------------------------------------------------
@@ -419,7 +419,8 @@ async function pageBet(id) {
   if (b.status === "open") {
     actions = `<div class="hint">👉 Waiting for <b>${esc(B)}</b> to accept and lock ${gnot(lock)}.</div>
       <div class="actions">
-        ${isB ? `<button class="btn green" data-do="accept">✅ Accept & lock ${gnot(lock)}</button>` : ""}
+        ${isB ? `<button class="btn green" data-do="accept">✅ Accept & lock ${gnot(lock)}</button>
+                 <button class="btn ghost" data-do="decline">🙅 Decline</button>` : ""}
         ${isA ? `<button class="btn ghost" data-do="cancel">Cancel & refund</button>` : ""}
       </div>`;
   } else if (b.status === "live") {
@@ -485,6 +486,7 @@ async function pageBet(id) {
     const d = el.dataset.do;
     if (d === "accept") call("AcceptBet", [id], lock);
     if (d === "cancel") call("CancelBet", [id]);
+    if (d === "decline") call("DeclineBet", [id]);
     if (d === "escalate") call("Escalate", [id]);
     if (d === "expire") call("ExpireDispute", [id]);
   });

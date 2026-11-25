@@ -4,7 +4,7 @@
 
 Built on [Gno.land](https://gno.land) for the Gnome Tavern hackathon.
 
-**Web app:** https://tavern-wagers.vercel.app · **Realm:** https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4
+**Web app:** https://tavern-wagers.vercel.app · **Realm:** https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5
 
 ## The problem
 
@@ -26,6 +26,18 @@ Friendly bets ("I'll beat you at chess", "Arsenal wins Saturday") break down in 
 The realm takes **no cut**. Every coin that goes in comes back out to players and judges.
 
 ## How it works
+
+```mermaid
+flowchart TD
+    A[Open a table, add friends] --> B[Player A challenges B<br/>locks stake + 10% bond]
+    B -->|B declines| X[Refund A]
+    B -->|B accepts, locks the same<br/>judges are fixed now| C[Game on]
+    C --> D{Both players report}
+    D -->|same result| E[Instant payout<br/>bonds back, no fee]
+    D -->|different results<br/>or a no-show after 24h| F[Judges vote<br/>table members not playing]
+    F -->|strict majority| G[Payout minus 1% judge fee<br/>liar loses bond + 🚩]
+    F -->|no majority in 48h| H[Full refund, bonds included]
+```
 
 1. **Open a table** and add your friends with nicknames.
 2. **Make a bet** against a friend at the table (hit 🎲 Challenge next to their name). You lock `stake + 10% bond`.
@@ -83,6 +95,7 @@ Total paid out: 11 GNOT = exactly what went in.
 | `CreateBet(tableID, title, opponentName, stake)` + send `stake*1.1` ugnot | member | challenges another member by nickname (or address) |
 | `AcceptBet(betID)` + send `stake*1.1` ugnot | player B | accepts the challenge |
 | `CancelBet(betID)` | player A | takes back an unaccepted bet |
+| `DeclineBet(betID)` | player B | turns the challenge down, A is refunded |
 | `Report(betID, "a"/"b"/"draw")` | players | reports the result |
 | `Escalate(betID)` | players | sends a no-show to the judges after 24h |
 | `Vote(betID, "a"/"b"/"draw")` | judges | votes on a disputed bet |
@@ -100,9 +113,9 @@ Pages: `:` (home), `:table/<id>`, `:bet/<id>`, `:pool/<id>`.
 ## Deployment
 
 - Network: Gno.land testnet **onyx-1**
-- Realm: `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4`
-- Page: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4
-- Submitted in block **1391171**, tx `MHTx2DCVdZQgrRHA9Oy8qL+mtDgEL7w4CqSCw1k9E48=`
+- Realm: `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5`
+- Page: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5
+- Submitted: (pending; v4 is in block 1391171, tx `MHTx2DCVdZQgrRHA9Oy8qL+mtDgEL7w4CqSCw1k9E48=`)
 
 Onyx parks new packages until its package approver enables them, so the page may show "Not Yet Enabled" for a while after deploying.
 
@@ -126,12 +139,22 @@ bash scripts/demo-keys.sh          # creates 5 demo accounts (once)
 bash scripts/dev.sh                # starts the local chain; leave it running
 # in another terminal:
 bash scripts/demo-scenario.sh      # plays a full story: honest bet, a lie caught by judges, an open challenge
-# open http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v4
+# open http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5
 ```
 
 ## Tests
 
 `wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, JSON views, page rendering, and group bets (agreed winner-takes-all, a disputed 60/40 split with a liar, validation and cancellation). Every settlement test checks that the coins paid out equal the coins paid in.
+
+## Security notes
+
+- **Coins in = coins out.** Every settlement path (agreed, disputed, draw, refund, cancel, decline) is tested to pay out exactly what was locked; rounding dust goes to a named recipient, never stays in the realm.
+- **Only real users can lock money.** Every function that reads the sent coins checks `IsUserCall()`, so another realm or a `maketx run` script can't fake a deposit.
+- **The sent amount must be exact** (stake + 10% bond), in `ugnot` only.
+- **Judges can't be stacked after the fact.** The panel is snapshotted when the bet is accepted (1v1) or when the last player joins (group bet).
+- **Players can't judge their own game**, and each judge votes once before a deadline.
+- **Bounded work.** Tables cap at 50 members, group bets at 20 players, stakes at 1 billion GNOT (so pots can't overflow), and pages and JSON views show the newest 30 items.
+- **Input hygiene.** Titles and names reject control characters, nicknames are limited to letters, numbers, spaces and `- _ .`, and everything rendered to markdown is escaped.
 
 ## Limits (honest ones)
 
