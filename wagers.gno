@@ -227,8 +227,9 @@ func LeaveTable(cur realm, tableID int) {
 	t := mustTable(tableID)
 	require(t.isMember(caller), "you are not a member of this table")
 	require(caller != t.Owner, "the owner can't leave the table")
+	label := t.label(caller)
 	t.removeMember(caller)
-	t.log("🚪 " + t.label(caller) + " left the table")
+	t.log("🚪 " + label + " left the table")
 }
 
 // RemoveMember lets the owner remove someone who has no unfinished bets.
