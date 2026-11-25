@@ -88,6 +88,7 @@ func renderTable(t *Table) string {
 	sb.WriteString("# 🍺 " + escape(t.Name) + "\n\n")
 	sb.WriteString("Table #" + id + " · owner " + who(t, t.Owner) + " · " + strconv.Itoa(len(t.Members)) + " members\n\n")
 	sb.WriteString("[🎲 New 1v1 bet](" + call("CreateBet", "tableID", id) + ") · ")
+	sb.WriteString("[🙋 Open challenge](" + call("CreateBet", "tableID", id, "opponentName", "anyone") + ") · ")
 	sb.WriteString("[🃏 New group bet](" + call("CreatePool", "tableID", id, "payout", "100", "acceptFewJudges", "false") + ") · ")
 	sb.WriteString("[👋 Add member (owner only)](" + call("AddMember", "tableID", id) + ") · ")
 	sb.WriteString("[✏️ Change your nickname](" + call("SetNickname", "tableID", id) + ")\n\n")

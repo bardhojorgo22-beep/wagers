@@ -73,6 +73,9 @@ call demo-judge3 ReportPool "" 1 "Leo"
 # Bet 3: open challenge, waiting for Leo to accept.
 call demo-bob CreateBet "$SEND" 1 "Bob beats Leo at FIFA" "Leo" "$STAKE"
 
+# Bet 4: an open challenge from Marco: anyone at the table can take it.
+call demo-judge1 CreateBet "$SEND" 1 "Anyone up for a 5 min blitz?" "anyone" "$STAKE"
+
 echo
 echo "Done."
 if [ "$CHAIN" = "dev" ]; then
