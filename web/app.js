@@ -48,8 +48,24 @@ const app = $("#app");
 
 function net() { return NETWORKS[state.net]; }
 
+// demo.js is normally loaded by index.html; load it on demand if a cached
+// page didn't include it.
+function ensureDemo() {
+  if (window.DEMO) return Promise.resolve();
+  return new Promise((ok, fail) => {
+    const s = document.createElement("script");
+    s.src = "demo.js?v=" + Date.now();
+    s.onload = ok;
+    s.onerror = () => fail(new Error("Couldn't load demo data"));
+    document.head.appendChild(s);
+  });
+}
+
 async function qeval(expr) {
-  if (net().demo) return window.DEMO.query(expr);
+  if (net().demo) {
+    await ensureDemo();
+    return window.DEMO.query(expr);
+  }
   const data = btoa(unescape(encodeURIComponent(`${net().pkg}.${expr}`)));
   const res = await fetch(net().rpc, {
     method: "POST",
@@ -121,6 +137,7 @@ function friendlyError(msg) {
 
 async function connect() {
   if (net().demo) {
+    await ensureDemo();
     state.account = window.DEMO.me;
     renderTop();
     route();
@@ -155,7 +172,8 @@ function renderTop() {
   btn.textContent = net().demo
     ? (state.account ? "Viewing as Alice" : "View as Alice")
     : state.account ? short(state.account) : "Connect Adena";
-  $("#demo-banner").hidden = !net().demo;
+  const banner = $("#demo-banner");
+  if (banner) banner.hidden = !net().demo;
   btn.classList.toggle("ghost", !!state.account);
   $("#realm-link").href = `${net().gnoweb}/r/${REALM_OWNER}/tavernwagers/v4`;
 }
@@ -666,7 +684,11 @@ function switchNet(key, remember) {
   state.net = key;
   sel.value = key;
   if (remember) { try { localStorage.setItem("tw-net", key); } catch (_) {} }
-  state.account = key === "demo" ? window.DEMO.me : null;
+  state.account = null;
+  if (key === "demo") {
+    ensureDemo().then(() => { state.account = window.DEMO.me; renderTop(); route(); });
+    return;
+  }
   renderTop();
   route();
 }
@@ -674,7 +696,6 @@ window.switchNet = switchNet;
 sel.onchange = () => switchNet(sel.value, true);
 $("#connect").onclick = connect;
 window.addEventListener("hashchange", route);
-if (net().demo) state.account = window.DEMO.me;
 renderTop();
 
 // Reconnect silently after a refresh if the user connected before.
@@ -683,7 +704,11 @@ renderTop();
   try { was = localStorage.getItem("tw-connected") === "1"; } catch (_) {}
   // Adena injects itself shortly after page load.
   for (let i = 0; was && !window.adena && i < 20; i++) await new Promise((r) => setTimeout(r, 100));
-  if (was && window.adena && !net().demo) {
+  if (net().demo) {
+    await ensureDemo();
+    state.account = window.DEMO.me;
+    renderTop();
+  } else if (was && window.adena) {
     try {
       const acc = await window.adena.GetAccount();
       if (acc.status === "success") {
