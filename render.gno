@@ -50,8 +50,8 @@ func renderHome() string {
 	sb.WriteString("The realm keeps nothing. Every coin that goes in comes back out to players and judges.\n\n")
 	sb.WriteString("[➕ Open a new table](" + call("CreateTable") + ")\n\n")
 
-	sb.WriteString("**" + strconv.Itoa(tables.Size()) + "** tables · **" + strconv.Itoa(bets.Size()) +
-		"** bets · **" + strconv.Itoa(totalSettled) + "** settled · **" + gnot(totalLocked, false) + "** locked all time\n\n")
+	sb.WriteString(count(tables.Size(), "table") + " · " + count(bets.Size(), "bet") + " · " +
+		count(totalSettled, "settled bet") + " · **" + gnot(totalLocked, false) + "** locked all time\n\n")
 
 	sb.WriteString("## Tables\n\n")
 	if tables.Size() == 0 {
@@ -140,6 +140,24 @@ func renderBet(b *Bet) string {
 	sb.WriteString("| Honesty bond | " + gnot(b.Bond, false) + " | " + gnot(b.Bond, false) + " |\n")
 	sb.WriteString("| Reported | " + result(t, b, b.ReportA) + " | " + result(t, b, b.ReportB) + " |\n\n")
 	sb.WriteString("Pot: **" + gnot(2*b.Stake, false) + "**\n\n")
+	aw, bw, dr := headToHead(t, b.PlayerA, b.PlayerB)
+	if aw+bw+dr > 0 {
+		sb.WriteString("Head to head at this table: " + plain(t, b.PlayerA) + " **" + strconv.Itoa(aw) + "** · " +
+			plain(t, b.PlayerB) + " **" + strconv.Itoa(bw) + "** · draws **" + strconv.Itoa(dr) + "**\n\n")
+	}
+	if b.Status == StatusSettled || b.Status == StatusRefunded {
+		loser := b.PlayerA
+		if b.Final == ResultA {
+			loser = b.PlayerB
+		}
+		other := b.PlayerB
+		if loser == b.PlayerB {
+			other = b.PlayerA
+		}
+		sb.WriteString("[🔁 Run it back](" + call("CreateBet", "tableID", strconv.Itoa(t.ID),
+			"title", rematchTitle(b.Title), "opponentName", nameOrAddr(t, other),
+			"stake", strconv.FormatInt(b.Stake, 10)) + ") _(for " + plain(t, loser) + ")_\n\n")
+	}
 
 	send := strconv.FormatInt(b.Stake+b.Bond, 10) + "ugnot"
 	switch b.Status {
@@ -228,13 +246,65 @@ func nextStep(t *Table, b *Bet) string {
 	return ""
 }
 
+// headToHead counts settled results between two players at a table,
+// from a's point of view: a's wins, b's wins, draws.
+func headToHead(t *Table, a, b address) (int, int, int) {
+	aw, bw, dr := 0, 0, 0
+	for _, id := range t.BetIDs {
+		x := mustBet(id)
+		if x.Status != StatusSettled {
+			continue
+		}
+		var winner address
+		switch x.Final {
+		case ResultA:
+			winner = x.PlayerA
+		case ResultB:
+			winner = x.PlayerB
+		}
+		pair := (x.PlayerA == a && x.PlayerB == b) || (x.PlayerA == b && x.PlayerB == a)
+		if !pair {
+			continue
+		}
+		switch winner {
+		case a:
+			aw++
+		case b:
+			bw++
+		default:
+			dr++
+		}
+	}
+	return aw, bw, dr
+}
+
+func rematchTitle(title string) string {
+	if !strings.HasPrefix(title, "Rematch: ") {
+		title = "Rematch: " + title
+	}
+	if len(title) > 140 {
+		title = title[:140]
+	}
+	return title
+}
+
+func nameOrAddr(t *Table, a address) string {
+	if n := t.Nick(a); n != "" {
+		return n
+	}
+	return a.String()
+}
+
+func count(n int, word string) string {
+	if n == 1 {
+		return "**1** " + word
+	}
+	return "**" + strconv.Itoa(n) + "** " + word + "s"
+}
+
 // challenge links to CreateBet with the table and opponent filled in.
 func challenge(t *Table, a address) string {
-	name := t.Nick(a)
-	if name == "" {
-		name = a.String()
-	}
-	return call("CreateBet", "tableID", strconv.Itoa(t.ID), "opponentName", name)
+	return call("CreateBet", "tableID", strconv.Itoa(t.ID), "opponentName", nameOrAddr(t, a))
 }
 
 // ---------------------------------------------------------------------------
@@ -243,7 +313,7 @@ func challenge(t *Table, a address) string {
 func statusBadge(t *Table, b *Bet) string {
 	switch b.Status {
 	case StatusOpen:
-		return "🟡 waiting for player B"
+		return "🟡 waiting for " + plain(t, b.PlayerB)
 	case StatusLive:
 		return "🟢 live"
 	case StatusDisputed:

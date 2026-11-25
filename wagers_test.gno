@@ -135,7 +135,10 @@ func TestDisputeLiarLosesBond(cur realm, t *testing.T) {
 
 	r := Render("table/" + itoa(tid))
 	uassert.True(t, strings.Contains(r, "🚩 1"), "leaderboard should flag bob")
-	uassert.True(t, strings.Contains(Render("bet/"+itoa(bid)), "liar's bond"), "bet page should show payouts")
+	bp := Render("bet/" + itoa(bid))
+	uassert.True(t, strings.Contains(bp, "liar's bond"), "bet page should show payouts")
+	uassert.True(t, strings.Contains(bp, "Run it back"), "settled bet offers a rematch")
+	uassert.True(t, strings.Contains(bp, "Head to head"), "settled bet shows head to head")
 }
 
 func TestDisputeDraw(cur realm, t *testing.T) {
