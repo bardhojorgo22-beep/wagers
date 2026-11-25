@@ -107,6 +107,8 @@ Total paid out: 11 GNOT = exactly what went in.
 | `CreateTable(name, nickname)` | anyone | opens a table, you're the owner |
 | `AddMember(tableID, address, nickname)` | table owner | adds a friend |
 | `SetNickname(tableID, nickname)` | member | changes your nickname |
+| `LeaveTable(tableID)` | member | leaves (not while playing or judging an unfinished bet) |
+| `RemoveMember(tableID, address)` | table owner | removes someone with no unfinished bets |
 | `CreateBet(tableID, title, opponentName, stake)` + send `stake*1.1` ugnot | member | challenges another member by nickname (or address), or `anyone` for an open challenge |
 | `AcceptBet(betID)` + send `stake*1.1` ugnot | player B | accepts the challenge |
 | `CancelBet(betID)` | player A | takes back an unaccepted bet |
@@ -165,7 +167,7 @@ bash scripts/testnet-demo.sh       # funds the demo accounts from your key, then
 
 ## Tests
 
-`wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, declines, stake limits, open challenges, win streaks, the activity feed, JSON views, page rendering, and group bets (agreed winner-takes-all, a disputed 60/40 split with a liar, no-shows, escalation, expiry, validation and cancellation). Every settlement test checks that the coins paid out equal the coins paid in.
+`wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, declines, stake limits, open challenges, win streaks, the activity feed, leaving and removing members, JSON views, page rendering, and group bets (agreed winner-takes-all, a disputed 60/40 split with a liar, no-shows, escalation, expiry, validation and cancellation). Every settlement test checks that the coins paid out equal the coins paid in.
 
 ## Security notes
 

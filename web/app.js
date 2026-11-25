@@ -408,7 +408,8 @@ async function pageTable(id) {
           <td>${m.wins}-${m.losses}-${m.draws}</td>
           <td>${m.disputesLost ? `<span class="flag">🚩 ${m.disputesLost}</span>` : "0"}</td>
           <td>${m.judged}</td>
-          <td>${isMember && m.address !== me ? `<button class="btn sm ghost" data-vs="${m.address}">🎲 Challenge</button>` : ""}</td>
+          <td>${isMember && m.address !== me ? `<button class="btn sm ghost" data-vs="${m.address}">🎲 Challenge</button>` : ""}
+            ${isOwner && m.address !== me ? `<button class="btn sm ghost" data-rm="${m.address}" title="Remove from table">✕</button>` : ""}</td>
         </tr>`).join("")}
     </table></div>
 
@@ -452,13 +453,18 @@ async function pageTable(id) {
     <div class="card"><div class="row">
       <div class="field"><input id="n-nick" value="${esc(nick(me) === short(me) ? "" : nick(me))}" maxlength="24"></div>
       <button class="btn ghost" id="n-go">Save</button>
-    </div></div>` : ""}`;
+    </div></div>
+    ${!isOwner ? `<p><button class="btn sm ghost" id="leave">🚪 Leave this table</button></p>` : ""}` : ""}`;
 
   $("#share").onclick = async () => {
     const url = location.href.split("#")[0] + `#/table/${id}`;
     try { await navigator.clipboard.writeText(url); toast("Link copied. Send it to the group chat 🍺", "ok"); }
     catch (_) { prompt("Copy this link:", url); }
   };
+  app.querySelectorAll("[data-rm]").forEach((el) => el.onclick = () => {
+    if (confirm(`Remove ${nick(el.dataset.rm)} from the table?`)) call("RemoveMember", [id, el.dataset.rm]);
+  });
+  if ($("#leave")) $("#leave").onclick = () => { if (confirm("Leave this table?")) call("LeaveTable", [id]); };
   app.querySelectorAll("[data-vs]").forEach((el) => el.onclick = () => {
     $("#b-opp").value = el.dataset.vs;
     $("#b-title").focus();

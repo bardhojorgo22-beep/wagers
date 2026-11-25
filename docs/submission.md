@@ -16,7 +16,7 @@ Judges are fixed when a bet is accepted, so nobody can add friends later to swin
 
 Two ways to use it: a web app (Adena wallet) that only shows the buttons that are your move, and the realm's own gnoweb pages, where every step is a pre-filled transaction link.
 
-**Gno component:** the realm `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5` (escrow, dispute voting, bond settlement, leaderboards, gnoweb rendering, JSON views for the web app). 18 unit tests cover agreed results, disputes, draws, expired votes, no-shows, cancellations, validation, nicknames, judge snapshots, declines, stake limits, open challenges, streaks, the activity feed, JSON, rendering and group bets, and every settlement test checks that coins out equal coins in.
+**Gno component:** the realm `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5` (escrow, dispute voting, bond settlement, leaderboards, gnoweb rendering, JSON views for the web app). 19 unit tests cover agreed results, disputes, draws, expired votes, no-shows, cancellations, validation, nicknames, judge snapshots, declines, stake limits, open challenges, streaks, the activity feed, leaving tables, JSON, rendering and group bets, and every settlement test checks that coins out equal coins in.
 
 **Links:**
 - Web app: https://tavern-wagers.vercel.app (opens in demo mode with sample data until the testnet package is enabled; switch to Testnet in the top bar)
