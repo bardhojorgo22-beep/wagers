@@ -4,7 +4,7 @@
 
 Built on [Gno.land](https://gno.land) for the Gnome Tavern hackathon.
 
-**Web app:** https://tavern-wagers.vercel.app · **Realm:** https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2
+**Web app:** https://tavern-wagers.vercel.app · **Realm:** https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v3
 
 ## The problem
 
@@ -41,6 +41,17 @@ The realm takes **no cut**. Every coin that goes in comes back out to players an
 6. **No majority within 48 hours?** Anyone can trigger a full refund, bonds included.
 7. **No-shows:** if one player reports and the other goes quiet for 24 hours, either player can escalate to the judges.
 
+### Group bets (poker night, tournaments, quizzes)
+
+1v1 isn't enough for a poker night, so Tavern Wagers also does **group bets** for 3 to 20 players.
+
+- Everyone locks the same stake + 10% bond. The game goes live when all invited players have joined.
+- The pot pays out by finishing position: **winner takes all**, **60/40**, or **50/30/20** (any split that adds up to 100).
+- After the game, **every player reports the top places**. All agree → instant payout. Anyone disagrees → the judges decide.
+- **There's no dealer with all the power.** The judges are the table members who are *not* playing, and a result needs a strict majority of them. A bribe has to buy several people, not one.
+- **3 judges minimum, by default.** If too many people want to play, the game refuses to start unless the creator explicitly opts in, and then shows a permanent ⚠️ warning. The idea: rotate who sits out and judges each game.
+- Any player whose report loses the vote forfeits their bond (half to honest players, half to judges) and gets a 🚩.
+
 ### Example
 
 Alice and Bob each lock 5 GNOT + 0.5 GNOT bond. Alice won, but Bob claims he did. Two of three judges vote "Alice won".
@@ -76,15 +87,22 @@ Total paid out: 11 GNOT = exactly what went in.
 | `Escalate(betID)` | players | sends a no-show to the judges after 24h |
 | `Vote(betID, "a"/"b"/"draw")` | judges | votes on a disputed bet |
 | `ExpireDispute(betID)` | anyone | refunds everyone if judges miss the 48h deadline |
+| `CreatePool(tableID, title, players, stake, payout, acceptFewJudges)` + send `stake*1.1` | member | starts a group bet; `players` = the other players' nicknames, `payout` = `"100"`, `"60,40"`, … |
+| `JoinPool(poolID)` + send `stake*1.1` | invited player | locks your stake |
+| `CancelPool(poolID)` | creator | calls it off before everyone joined, refunds all |
+| `ReportPool(poolID, "Alice,Bob")` | players | reports the paid places, best first |
+| `EscalatePool(poolID)` | players | sends no-shows to the judges after 24h |
+| `VotePool(poolID, "Alice,Bob")` | judges | votes on a disputed group bet |
+| `ExpirePool(poolID)` | anyone | refunds everyone if judges miss the deadline |
 
-Pages: `:` (home), `:table/<id>`, `:bet/<id>`.
+Pages: `:` (home), `:table/<id>`, `:bet/<id>`, `:pool/<id>`.
 
 ## Deployment
 
 - Network: Gno.land testnet **onyx-1**
-- Realm: `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2`
-- Page: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2
-- Submitted in block **1390831**, tx `+U6dU/4vCM/+kkLgUj2u/OFe1ybrh161uoVigiXfJBM=`
+- Realm: `gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v3`
+- Page: https://onyx.testnets.gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v3
+- Submitted: (pending)
 
 Onyx parks new packages until its package approver enables them, so the page may show "Not Yet Enabled" for a while after deploying.
 
@@ -108,12 +126,12 @@ bash scripts/demo-keys.sh          # creates 5 demo accounts (once)
 bash scripts/dev.sh                # starts the local chain; leave it running
 # in another terminal:
 bash scripts/demo-scenario.sh      # plays a full story: honest bet, a lie caught by judges, an open challenge
-# open http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2
+# open http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v3
 ```
 
 ## Tests
 
-`wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, and page rendering. Every settlement test checks that the coins paid out equal the coins paid in.
+`wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, JSON views, page rendering, and group bets (agreed winner-takes-all, a disputed 60/40 split with a liar, validation and cancellation). Every settlement test checks that the coins paid out equal the coins paid in.
 
 ## Limits (honest ones)
 

@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # Plays a full demo on a FRESH local gnodev node (run demo-keys.sh first and
 # start gnodev with the command it printed). Afterwards, open
-# http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2
+# http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v3
 #
 # Story:
 #   Table "Friday Chess Club": alice (owner), bob, judge1-3.
 #   Bet 1: alice vs bob, both agree alice won -> instant payout.
 #   Bet 2: alice vs bob, bob lies -> judges vote -> bob loses his bond.
+#   Group bet 1: poker night, Alice/Bob/Leo, everyone agrees Leo won.
 #   Bet 3: left open so the "accept" button shows on the page.
 set -euo pipefail
 
-PKG="gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2"
+PKG="gno.land/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v3"
 REMOTE="${REMOTE:-127.0.0.1:26657}"
 CHAIN="${CHAIN:-dev}"
 STAKE=5000000            # 5 GNOT
@@ -57,8 +58,17 @@ call demo-bob   Report "" 2 b
 call demo-judge1 Vote "" 2 a
 call demo-judge2 Vote "" 2 a
 
+# Group bet: poker night. Alice, Bob and Leo play; Marco and Sara judge.
+# Only 2 judges, so the game opts in to the "fewer than 3 judges" warning.
+call demo-alice CreatePool "$SEND" 1 "Friday poker night" "Bob,Leo" "$STAKE" "100" "true"
+call demo-bob   JoinPool "$SEND" 1
+call demo-judge3 JoinPool "$SEND" 1
+call demo-alice ReportPool "" 1 "Leo"
+call demo-bob   ReportPool "" 1 "Leo"
+call demo-judge3 ReportPool "" 1 "Leo"
+
 # Bet 3: open challenge, waiting for Leo to accept.
 call demo-bob CreateBet "$SEND" 1 "Bob beats Leo at FIFA" "Leo" "$STAKE"
 
 echo
-echo "Done. Open: http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v2"
+echo "Done. Open: http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v3"
