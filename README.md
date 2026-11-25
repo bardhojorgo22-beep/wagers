@@ -142,6 +142,12 @@ bash scripts/demo-scenario.sh      # plays a full story: honest bet, a lie caugh
 # open http://localhost:8888/r/g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx/tavernwagers/v5
 ```
 
+To play the same story on the real testnet (small stakes) once the package is enabled:
+
+```sh
+bash scripts/testnet-demo.sh       # funds the demo accounts from your key, then runs the scenario on onyx-1
+```
+
 ## Tests
 
 `wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, declines, stake limits, JSON views, page rendering, and group bets (agreed winner-takes-all, a disputed 60/40 split with a liar, no-shows, escalation, expiry, validation and cancellation). Every settlement test checks that the coins paid out equal the coins paid in.
