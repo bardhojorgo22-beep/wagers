@@ -1,0 +1,29 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gno-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Build gno v1.8.0
+        run: |
+          git clone --depth 1 --branch v1.8.0 https://github.com/gnolang/gno.git "$HOME/gno"
+          cd "$HOME/gno/gnovm" && go build -o "$HOME/bin/gno" ./cmd/gno
+
+      - name: gno test
+        env:
+          GNOROOT: ${{ env.HOME }}/gno
+        run: |
+          export GNOROOT="$HOME/gno"
+          "$HOME/bin/gno" test -v . 2>&1 | grep -E "^(=== RUN|--- (PASS|FAIL))|^ok|FAIL|panic" || true
+          "$HOME/bin/gno" test .

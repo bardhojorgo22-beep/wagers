@@ -1,5 +1,7 @@
 # 🍺 Tavern Wagers
 
+[![test](https://github.com/bardhojorgo22-beep/wagers/actions/workflows/test.yml/badge.svg)](https://github.com/bardhojorgo22-beep/wagers/actions/workflows/test.yml)
+
 ![Tavern Wagers](web/cover.png)
 
 **Bet on anything with your friends. The money's locked upfront, neutral judges call it, and the winner gets paid automatically. No more "I'll pay you later."**
