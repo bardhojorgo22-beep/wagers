@@ -129,6 +129,9 @@ var (
 
 	totalLocked  int64 // ugnot locked in accepted bets, all time
 	totalSettled int   // bets settled (paid out to a winner or draw)
+	liarsCaught  int   // reports that lost a judges' vote
+	biggestPot   int64 // largest pot ever settled, ugnot
+	judgesPaid   int64 // ugnot paid to judges, all time
 )
 
 // ---------------------------------------------------------------------------
@@ -402,6 +405,7 @@ func (b *Bet) settle(final string, majority []address) {
 		} else {
 			forfeited += b.Bond
 			t.stats(players[i]).DisputesLost++
+			liarsCaught++
 		}
 	}
 
@@ -426,6 +430,12 @@ func (b *Bet) settle(final string, majority []address) {
 	}
 
 	b.Payouts = payouts
+	if pot > biggestPot {
+		biggestPot = pot
+	}
+	for _, j := range majority {
+		judgesPaid += received(payouts, j)
+	}
 
 	// Leaderboard: net result per person, relative to what they put in.
 	deposit := b.Stake + b.Bond

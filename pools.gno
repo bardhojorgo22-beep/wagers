@@ -304,6 +304,7 @@ func (p *Pool) settle(final string, majority []address) {
 		} else {
 			forfeited += p.Bond
 			t.stats(a).DisputesLost++
+			liarsCaught++
 		}
 	}
 
@@ -326,6 +327,12 @@ func (p *Pool) settle(final string, majority []address) {
 		}
 	}
 	p.Payouts = payouts
+	if pot > biggestPot {
+		biggestPot = pot
+	}
+	for _, j := range majority {
+		judgesPaid += received(payouts, j)
+	}
 
 	// Leaderboard.
 	deposit := p.Stake + p.Bond

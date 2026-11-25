@@ -522,6 +522,7 @@ func TestPoolDisputeSplitPayout(cur realm, t *testing.T) {
 		total += after[i] - before[i]
 	}
 	uassert.Equal(t, 4*(stake+bond), total)
+	uassert.True(t, strings.Contains(StatsJSON(), `"liarsCaught":`), "stats json")
 }
 
 func TestPoolValidationAndCancel(cur realm, t *testing.T) {

@@ -55,8 +55,9 @@ func renderHome() string {
 	sb.WriteString("The realm keeps nothing. Every coin that goes in comes back out to players and judges.\n\n")
 	sb.WriteString("[➕ Open a new table](" + call("CreateTable") + ")\n\n")
 
-	sb.WriteString(count(tables.Size(), "table") + " · " + count(bets.Size(), "bet") + " · " +
-		count(totalSettled, "settled bet") + " · **" + gnot(totalLocked, false) + "** locked all time\n\n")
+	sb.WriteString(count(tables.Size(), "table") + " · " + count(bets.Size()+pools.Size(), "bet") + " · " +
+		count(totalSettled, "settled bet") + " · **" + gnot(totalLocked, false) + "** locked all time · " +
+		count(liarsCaught, "liar") + " caught 🚩 · biggest pot **" + gnot(biggestPot, false) + "**\n\n")
 
 	sb.WriteString("## Tables\n\n")
 	if tables.Size() == 0 {

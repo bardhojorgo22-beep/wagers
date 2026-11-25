@@ -143,6 +143,7 @@ function renderTop() {
 
 async function pageHome() {
   const tables = await qeval("TablesJSON()");
+  const st = await qeval("StatsJSON()");
   const mine = state.account ? await qeval(`MyTablesJSON("${state.account}")`) : [];
 
   app.innerHTML = `
@@ -157,9 +158,15 @@ async function pageHome() {
       </div>
       <div class="card">
         <div class="stats">
-          <div><b>${tables.length}</b>tables</div>
-          <div><b>${tables.reduce((n, t) => n + t.bets, 0)}</b>bets</div>
+          <div><b>${st.tables}</b>tables</div>
+          <div><b>${st.bets}</b>bets</div>
+          <div><b>${st.settled}</b>settled</div>
           <div><b>0%</b>house cut</div>
+        </div>
+        <div class="stats">
+          <div><b>${gnot(st.biggestPot)}</b>biggest pot</div>
+          <div><b>${st.liarsCaught} 🚩</b>liars caught</div>
+          <div><b>${gnot(st.judgesPaid)}</b>paid to judges</div>
         </div>
         <p class="muted small">Every coin that goes in comes back out to players and judges.</p>
       </div>
@@ -212,7 +219,8 @@ async function pageTable(id) {
   app.innerHTML = `
     <a class="back" href="#/">← All tables</a>
     <h1>🍺 ${esc(t.name)}</h1>
-    <p class="muted">Owner ${esc(nick(t.owner))} · ${t.members.length} members</p>
+    <p class="muted">Owner ${esc(nick(t.owner))} · ${t.members.length} members ·
+      <button class="btn sm ghost" id="share">🔗 Copy table link</button></p>
 
     ${isMember ? `
     <div class="card">
@@ -249,7 +257,7 @@ async function pageTable(id) {
 
     <h2>🏆 Leaderboard</h2>
     <div class="card"><table>
-      <tr><th>#</th><th>Member</th><th class="num">Net</th><th>W-L-D</th><th>Disputes lost</th><th>Judged</th></tr>
+      <tr><th>#</th><th>Member</th><th class="num">Net</th><th>W-L-D</th><th>Disputes lost</th><th>Judged</th><th></th></tr>
       ${ranked.map((m, i) => `
         <tr>
           <td>${i + 1}</td>
@@ -258,6 +266,7 @@ async function pageTable(id) {
           <td>${m.wins}-${m.losses}-${m.draws}</td>
           <td>${m.disputesLost ? `<span class="flag">🚩 ${m.disputesLost}</span>` : "0"}</td>
           <td>${m.judged}</td>
+          <td>${isMember && m.address !== me ? `<button class="btn sm ghost" data-vs="${m.address}">🎲 Challenge</button>` : ""}</td>
         </tr>`).join("")}
     </table></div>
 
@@ -298,6 +307,17 @@ async function pageTable(id) {
       <div class="field"><input id="n-nick" value="${esc(nick(me) === short(me) ? "" : nick(me))}" maxlength="24"></div>
       <button class="btn ghost" id="n-go">Save</button>
     </div></div>` : ""}`;
+
+  $("#share").onclick = async () => {
+    const url = location.href.split("#")[0] + `#/table/${id}`;
+    try { await navigator.clipboard.writeText(url); toast("Link copied. Send it to the group chat 🍺", "ok"); }
+    catch (_) { prompt("Copy this link:", url); }
+  };
+  app.querySelectorAll("[data-vs]").forEach((el) => el.onclick = () => {
+    $("#b-opp").value = el.dataset.vs;
+    $("#b-title").focus();
+    $("#b-title").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
 
   if (isMember) {
     const total = () => {

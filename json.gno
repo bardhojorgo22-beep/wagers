@@ -17,6 +17,19 @@ func TablesJSON() string {
 	return "[" + strings.Join(items, ",") + "]"
 }
 
+// StatsJSON returns all-time numbers for the home page.
+func StatsJSON() string {
+	return obj(
+		"tables", itoa(tables.Size()),
+		"bets", itoa(bets.Size()+pools.Size()),
+		"settled", itoa(totalSettled),
+		"locked", i64(totalLocked),
+		"liarsCaught", itoa(liarsCaught),
+		"biggestPot", i64(biggestPot),
+		"judgesPaid", i64(judgesPaid),
+	)
+}
+
 // MyTablesJSON lists the tables an address belongs to.
 func MyTablesJSON(who address) string {
 	var items []string
