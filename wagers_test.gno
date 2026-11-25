@@ -719,3 +719,38 @@ func TestOpenChallengeFeedAndStreaks(cur realm, t *testing.T) {
 	Report(cross(cur), bid, "a")
 	uassert.True(t, strings.Contains(TableJSON(tid), `"streak":0,"bestStreak":3`), "streak reset for alice")
 }
+
+func TestLeaveAndRemove(cur realm, t *testing.T) {
+	testing.IssueCoins(pkgAddr, chain.Coins{{"ugnot", 100_000_000}})
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(nil)
+	tid := CreateTable(cross(cur), "Leave table", "Alice")
+	AddMember(cross(cur), tid, bob, "Bob")
+	AddMember(cross(cur), tid, carol, "Carol")
+	AddMember(cross(cur), tid, dave, "Dave")
+
+	uassert.AbortsWithMessage(t, cur, "the owner can't leave the table", func() { LeaveTable(cross(cur), tid) })
+
+	// Bob is busy in an open bet: can't leave or be removed.
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	bid := CreateBet(cross(cur), tid, "busy", "Bob", stake)
+	testing.SetOriginSend(nil)
+	uassert.AbortsWithMessage(t, cur, "they still have an unfinished bet at this table (as a player or judge)", func() { RemoveMember(cross(cur), tid, bob) })
+	testing.SetRealm(testing.NewUserRealm(bob))
+	uassert.AbortsWithMessage(t, cur, "they still have an unfinished bet at this table (as a player or judge)", func() { LeaveTable(cross(cur), tid) })
+	uassert.AbortsWithMessage(t, cur, "only the table owner can remove members", func() { RemoveMember(cross(cur), tid, carol) })
+
+	// Free members can go.
+	testing.SetRealm(testing.NewUserRealm(dave))
+	LeaveTable(cross(cur), tid)
+	testing.SetRealm(testing.NewUserRealm(alice))
+	CancelBet(cross(cur), bid)
+	RemoveMember(cross(cur), tid, bob)
+	r := Render("table/" + itoa(tid))
+	uassert.True(t, strings.Contains(r, "Dave left the table"), "leave logged")
+	uassert.True(t, strings.Contains(r, "Bob was removed"), "removal logged")
+	uassert.True(t, strings.Contains(r, "2 members"), "member count")
+
+	// Bob's nickname is free again, and he can be added back.
+	AddMember(cross(cur), tid, bob, "Bob")
+}

@@ -91,7 +91,8 @@ func renderTable(t *Table) string {
 	sb.WriteString("[🙋 Open challenge](" + call("CreateBet", "tableID", id, "opponentName", "anyone") + ") · ")
 	sb.WriteString("[🃏 New group bet](" + call("CreatePool", "tableID", id, "payout", "100", "acceptFewJudges", "false") + ") · ")
 	sb.WriteString("[👋 Add member (owner only)](" + call("AddMember", "tableID", id) + ") · ")
-	sb.WriteString("[✏️ Change your nickname](" + call("SetNickname", "tableID", id) + ")\n\n")
+	sb.WriteString("[✏️ Change your nickname](" + call("SetNickname", "tableID", id) + ") · ")
+	sb.WriteString("[🚪 Leave](" + call("LeaveTable", "tableID", id) + ")\n\n")
 
 	// Leaderboard, sorted by net winnings.
 	sb.WriteString("## 🏆 Leaderboard\n\n")

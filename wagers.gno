@@ -220,6 +220,64 @@ func AddMember(cur realm, tableID int, member address, nickname string) {
 	t.log("👋 " + t.label(member) + " joined the table")
 }
 
+// LeaveTable removes you from a table. You can't leave while you're
+// playing or judging an unfinished bet, and the owner can't leave.
+func LeaveTable(cur realm, tableID int) {
+	caller := cur.Previous().Address()
+	t := mustTable(tableID)
+	require(t.isMember(caller), "you are not a member of this table")
+	require(caller != t.Owner, "the owner can't leave the table")
+	t.removeMember(caller)
+	t.log("🚪 " + t.label(caller) + " left the table")
+}
+
+// RemoveMember lets the owner remove someone who has no unfinished bets.
+func RemoveMember(cur realm, tableID int, member address) {
+	caller := cur.Previous().Address()
+	t := mustTable(tableID)
+	require(caller == t.Owner, "only the table owner can remove members")
+	require(member != t.Owner, "the owner can't be removed")
+	require(t.isMember(member), "not a member of this table")
+	label := t.label(member)
+	t.removeMember(member)
+	t.log("🚪 " + label + " was removed from the table")
+}
+
+func (t *Table) removeMember(a address) {
+	require(!t.busy(a), "they still have an unfinished bet at this table (as a player or judge)")
+	var kept []address
+	for _, m := range t.Members {
+		if m != a {
+			kept = append(kept, m)
+		}
+	}
+	t.Members = kept
+	t.Names.Remove(a.String())
+}
+
+// busy reports whether a member is a player or judge in an unfinished bet.
+func (t *Table) busy(a address) bool {
+	for _, id := range t.BetIDs {
+		b := mustBet(id)
+		switch b.Status {
+		case StatusOpen, StatusLive, StatusDisputed:
+			if b.PlayerA == a || b.PlayerB == a || b.isJudge(a) {
+				return true
+			}
+		}
+	}
+	for _, id := range t.PoolIDs {
+		p := mustPool(id)
+		switch p.Status {
+		case StatusOpen, StatusLive, StatusDisputed:
+			if containsAddr(p.Players, a) || containsAddr(p.Judges, a) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // SetNickname changes how you appear at a table.
 func SetNickname(cur realm, tableID int, nickname string) {
 	caller := cur.Previous().Address()
