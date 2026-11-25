@@ -122,6 +122,7 @@ func poolJSON(p *Pool) string {
 		"players", "["+strings.Join(players, ",")+"]",
 		"judges", "["+strings.Join(judges, ",")+"]",
 		"final", q(p.Final),
+		"fewJudges", boolStr(p.FewJudges),
 		"deadline", q(deadline),
 		"firstReportAt", q(firstReport),
 		"payouts", "["+strings.Join(payouts, ",")+"]",

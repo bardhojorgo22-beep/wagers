@@ -242,6 +242,8 @@ async function pageTable(id) {
         <div class="checks">${t.members.filter((m) => m.address !== me).map((m) => `
           <label class="check"><input type="checkbox" value="${m.address}"> ${esc(m.nick || short(m.address))}</label>`).join("")}</div>
       </div>
+      <p class="small" id="p-judges"></p>
+      <label class="check" id="p-risk-wrap" hidden><input type="checkbox" id="p-risk"> I get it: play with fewer than 3 judges anyway</label>
       <div class="actions"><button class="btn" id="p-go">Lock & invite</button></div>
     </div>` : me ? `<p class="hint">You're not at this table. Ask ${esc(nick(t.owner))} to add you.</p>` : `<p class="hint">Connect your wallet to bet at this table.</p>`}
 
@@ -310,6 +312,17 @@ async function pageTable(id) {
       call("CreateBet", [id, $("#b-title").value, $("#b-opp").value, s], s + Math.floor(s / BOND_PCT));
     };
     $("#n-go").onclick = () => call("SetNickname", [id, $("#n-nick").value]);
+    const judgeInfo = () => {
+      const picked = app.querySelectorAll(".checks input:checked").length;
+      const judges = t.members.length - 1 - picked;
+      const few = judges < 3;
+      $("#p-judges").innerHTML = few
+        ? `<span class="flag">⚠️ Only ${judges} ${judges === 1 ? "person" : "people"} left to judge.</span> <span class="muted">If players disagree, they decide alone. We recommend leaving at least 3 people out to judge, and rotating who sits out each game.</span>`
+        : `<span class="pos">⚖️ ${judges} judges</span> <span class="muted">(everyone not playing). Rotate who sits out each game.</span>`;
+      $("#p-risk-wrap").hidden = !few;
+    };
+    app.querySelectorAll(".checks input").forEach((el) => el.onchange = judgeInfo);
+    judgeInfo();
     $("#p-go").onclick = () => {
       const s = toUgnot($("#p-stake").value);
       if (!s) return toast("Enter a stake", "err");
@@ -317,7 +330,9 @@ async function pageTable(id) {
       const places = $("#p-payout").value.split(",").length;
       if (picked.length < 2) return toast("Pick at least 2 other players", "err");
       if (places >= picked.length + 1) return toast("Too many paid places for this many players", "err");
-      call("CreatePool", [id, $("#p-title").value, picked.join(","), s, $("#p-payout").value], s + Math.floor(s / BOND_PCT));
+      const few = t.members.length - 1 - picked.length < 3;
+      if (few && !$("#p-risk").checked) return toast("Fewer than 3 judges: tick the box to play anyway", "err");
+      call("CreatePool", [id, $("#p-title").value, picked.join(","), s, $("#p-payout").value, few ? "true" : "false"], s + Math.floor(s / BOND_PCT));
     };
   }
   if (isOwner) $("#m-go").onclick = () => call("AddMember", [id, $("#m-addr").value.trim(), $("#m-nick").value]);
@@ -461,6 +476,7 @@ async function pagePool(id) {
     <a class="back" href="#/table/${t.id}">← ${esc(t.name)}</a>
     <h1>🃏 ${esc(p.title)}</h1>
     <p>${poolPill(p, nick)}</p>
+    ${p.fewJudges ? `<div class="hint">⚠️ Started with fewer than 3 judges. If players disagree, very few people decide the result. Play with people you trust.</div>` : ""}
     <p class="muted">${p.players.length} players · ${gnot(p.stake)} each · bond ${gnot(p.bond)} each · pot <b style="color:var(--text)">${gnot(pot)}</b>
       · payout ${p.shares.map((sh, i) => `${place(i)} ${sh}%`).join(" / ")}</p>
 

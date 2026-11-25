@@ -433,7 +433,7 @@ func TestPoolAgreedWinnerTakesAll(cur realm, t *testing.T) {
 
 	testing.SetRealm(testing.NewUserRealm(alice))
 	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
-	pid := CreatePool(cross(cur), tid, "Texas hold'em", "Bob, carol,Dave", stake, "100")
+	pid := CreatePool(cross(cur), tid, "Texas hold'em", "Bob, carol,Dave", stake, "100", true)
 	uassert.Equal(t, "open", GetPoolStatus(pid))
 
 	testing.SetRealm(testing.NewUserRealm(bob))
@@ -480,7 +480,7 @@ func TestPoolDisputeSplitPayout(cur realm, t *testing.T) {
 
 	testing.SetRealm(testing.NewUserRealm(alice))
 	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
-	pid := CreatePool(cross(cur), tid, "Cup final", "Bob,Carol,Dave", stake, "60,40")
+	pid := CreatePool(cross(cur), tid, "Cup final", "Bob,Carol,Dave", stake, "60,40", false)
 	for _, who := range []address{bob, carol, dave} {
 		testing.SetRealm(testing.NewUserRealm(who))
 		testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
@@ -533,12 +533,16 @@ func TestPoolValidationAndCancel(cur realm, t *testing.T) {
 	AddMember(cross(cur), tid, carol, "Carol")
 
 	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
-	uassert.AbortsWithMessage(t, cur, "a player is listed twice", func() { CreatePool(cross(cur), tid, "x", "Bob,bob", stake, "100") })
-	uassert.AbortsWithMessage(t, cur, "a group bet needs at least 3 players (use a 1v1 bet for 2)", func() { CreatePool(cross(cur), tid, "x", "Bob", stake, "100") })
-	uassert.AbortsWithMessage(t, cur, "payout percentages must add up to 100", func() { CreatePool(cross(cur), tid, "x", "Bob,Carol", stake, "60,30") })
-	uassert.AbortsWithMessage(t, cur, "more paid places than players minus one", func() { CreatePool(cross(cur), tid, "x", "Bob,Carol", stake, "50,30,20") })
+	uassert.AbortsWithMessage(t, cur, "a player is listed twice", func() { CreatePool(cross(cur), tid, "x", "Bob,bob", stake, "100", true) })
+	uassert.AbortsWithMessage(t, cur, "a group bet needs at least 3 players (use a 1v1 bet for 2)", func() { CreatePool(cross(cur), tid, "x", "Bob", stake, "100", true) })
+	uassert.AbortsWithMessage(t, cur, "payout percentages must add up to 100", func() { CreatePool(cross(cur), tid, "x", "Bob,Carol", stake, "60,30", true) })
+	uassert.AbortsWithMessage(t, cur, "more paid places than players minus one", func() { CreatePool(cross(cur), tid, "x", "Bob,Carol", stake, "50,30,20", true) })
 
-	pid := CreatePool(cross(cur), tid, "Pub quiz", "Bob,Carol", stake, "100")
+	uassert.AbortsWithMessage(t, cur, "only 0 table member(s) left to judge disputes (we recommend 3): leave some people out to judge, or set acceptFewJudges to play anyway", func() {
+		CreatePool(cross(cur), tid, "x", "Bob,Carol", stake, "100", false)
+	})
+	pid := CreatePool(cross(cur), tid, "Pub quiz", "Bob,Carol", stake, "100", true)
+	uassert.True(t, strings.Contains(Render("pool/"+itoa(pid)), "fewer than 3 judges"), "warning shown")
 	testing.SetRealm(testing.NewUserRealm(bob))
 	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
 	JoinPool(cross(cur), pid)

@@ -85,7 +85,7 @@ func renderTable(t *Table) string {
 	sb.WriteString("# 🍺 " + escape(t.Name) + "\n\n")
 	sb.WriteString("Table #" + id + " · owner " + who(t, t.Owner) + " · " + strconv.Itoa(len(t.Members)) + " members\n\n")
 	sb.WriteString("[🎲 New 1v1 bet](" + call("CreateBet", "tableID", id) + ") · ")
-	sb.WriteString("[🃏 New group bet](" + call("CreatePool", "tableID", id, "payout", "100") + ") · ")
+	sb.WriteString("[🃏 New group bet](" + call("CreatePool", "tableID", id, "payout", "100", "acceptFewJudges", "false") + ") · ")
 	sb.WriteString("[👋 Add member (owner only)](" + call("AddMember", "tableID", id) + ") · ")
 	sb.WriteString("[✏️ Change your nickname](" + call("SetNickname", "tableID", id) + ")\n\n")
 
@@ -248,6 +248,9 @@ func renderPool(p *Pool) string {
 	sb.WriteString("[← " + escape(t.Name) + "](" + page("table/"+strconv.Itoa(t.ID)) + ")\n\n")
 	sb.WriteString("# 🃏 " + escape(p.Title) + "\n\n")
 	sb.WriteString("**Status: " + poolBadge(t, p) + "**\n\n")
+	if p.FewJudges {
+		sb.WriteString("> ⚠️ This game was started with fewer than 3 judges. If players disagree, very few people decide the result. Play with people you trust.\n\n")
+	}
 	n := int64(len(p.Players))
 	sb.WriteString("Stake **" + gnot(p.Stake, false) + "** each · bond " + gnot(p.Bond, false) + " each · pot **" + gnot(n*p.Stake, false) + "**\n\n")
 

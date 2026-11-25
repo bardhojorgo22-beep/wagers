@@ -19,7 +19,10 @@ import (
 // table members who did NOT play judge it, exactly like a 1v1 bet. Any
 // player whose report loses the vote forfeits their bond.
 
-const MaxPoolPlayers = 20
+const (
+	MaxPoolPlayers = 20
+	MinJudges      = 3 // recommended minimum judge panel for a group bet
+)
 
 type Pool struct {
 	ID      int
@@ -40,6 +43,8 @@ type Pool struct {
 	Votes    *avl.Tree // address -> canonical ranking
 	Deadline time.Time
 
+	FewJudges bool // created with fewer than MinJudges possible judges
+
 	Final   string // canonical ranking: comma-separated addresses, 1st first
 	Payouts []Payout
 	Created time.Time
@@ -54,7 +59,12 @@ var (
 // comma-separated list of the OTHER players' nicknames (or addresses).
 // payout is the split of the pot by finishing position in percent:
 // "100" (winner takes all) or e.g. "60,30,10". Send stake + 10% bond.
-func CreatePool(cur realm, tableID int, title string, players string, stake int64, payout string) int {
+//
+// Disputes are decided by the table members who are NOT playing. We want at
+// least MinJudges of them, so no one or two people hold all the power. A
+// table can still play with fewer (everyone wants in on poker night) by
+// setting acceptFewJudges, which is shown as a warning on the game.
+func CreatePool(cur realm, tableID int, title string, players string, stake int64, payout string, acceptFewJudges bool) int {
 	require(cur.Previous().IsUserCall(), "only direct user calls accepted")
 	caller := cur.Previous().Address()
 	t := mustTable(tableID)
@@ -80,6 +90,11 @@ func CreatePool(cur realm, tableID int, title string, players string, stake int6
 	shares := parseShares(payout)
 	require(len(shares) < len(list), "more paid places than players minus one")
 
+	judgesNow := len(t.Members) - len(list)
+	require(judgesNow >= MinJudges || acceptFewJudges,
+		"only "+strconv.Itoa(judgesNow)+" table member(s) left to judge disputes (we recommend "+strconv.Itoa(MinJudges)+
+			"): leave some people out to judge, or set acceptFewJudges to play anyway")
+
 	bond := stake / 10
 	requireSent(stake + bond)
 
@@ -98,6 +113,8 @@ func CreatePool(cur realm, tableID int, title string, players string, stake int6
 		Reports: avl.NewTree(),
 		Votes:   avl.NewTree(),
 		Created: time.Now(),
+
+		FewJudges: judgesNow < MinJudges,
 	}
 	p.Joined.Set(caller.String(), true)
 	pools.Set(strconv.Itoa(p.ID), p)
