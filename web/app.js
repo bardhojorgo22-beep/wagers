@@ -560,7 +560,13 @@ async function pageBet(id) {
       <div class="card"><table>
         <tr><th>To</th><th class="num">Amount</th><th>Why</th></tr>
         ${b.payouts.map((p) => `<tr><td><b>${esc(nick(p.to))}</b></td><td class="num">${gnot(p.amount)}</td><td class="muted">${esc(p.why)}</td></tr>`).join("")}
-      </table></div>` : ""}`;
+      </table></div>` : ""}
+
+    ${b.status === "settled" ? `<div class="actions"><button class="btn ghost" id="brag">📣 Share the result</button></div>` : ""}`;
+  if ($("#brag")) $("#brag").onclick = () => shareText(
+    b.final === "draw"
+      ? `${A} and ${B} drew "${b.title}" on Tavern Wagers 🍺`
+      : `${b.final === "a" ? A : B} beat ${b.final === "a" ? B : A}: "${b.title}" for ${gnot(b.stake)} on Tavern Wagers 🍺 No "I'll pay you later".`);
 
   app.querySelectorAll("[data-report]").forEach((el) => el.onclick = () => call("Report", [id, el.dataset.report]));
   app.querySelectorAll("[data-vote]").forEach((el) => el.onclick = () => call("Vote", [id, el.dataset.vote]));
@@ -623,6 +629,7 @@ async function pagePool(id) {
     <h1>🃏 ${esc(p.title)}</h1>
     <p>${poolPill(p, nick)}</p>
     ${p.fewJudges ? `<div class="hint">⚠️ Started with fewer than 3 judges. If players disagree, very few people decide the result. Play with people you trust.</div>` : ""}
+    <p><button class="btn sm ghost" id="pool-share">${p.status === "settled" ? "📣 Share the result" : "🔗 Share invite"}</button></p>
     <p class="muted">${p.players.length} players · ${gnot(p.stake)} each · bond ${gnot(p.bond)} each · pot <b style="color:var(--text)">${gnot(pot)}</b>
       · payout ${p.shares.map((sh, i) => `${place(i)} ${sh}%`).join(" / ")}</p>
 
@@ -654,13 +661,22 @@ async function pagePool(id) {
         ${p.payouts.map((x) => `<tr><td><b>${esc(nick(x.to))}</b></td><td class="num">${gnot(x.amount)}</td><td class="muted">${esc(x.why)}</td></tr>`).join("")}
       </table></div>` : ""}`;
 
-  if ($("#r-go")) $("#r-go").onclick = () => call("ReportPool", [id, picked("r").join(",")]);
-  if ($("#v-go")) $("#v-go").onclick = () => call("VotePool", [id, picked("v").join(",")]);
+  const send = (fn, prefix) => {
+    const order = picked(prefix);
+    if (new Set(order).size !== order.length) return toast("Each place needs a different player", "err");
+    call(fn, [id, order.join(",")]);
+  };
+  if ($("#r-go")) $("#r-go").onclick = () => send("ReportPool", "r");
+  if ($("#v-go")) $("#v-go").onclick = () => send("VotePool", "v");
   // Pre-select different players in each place.
   ["r", "v"].forEach((prefix) => p.shares.forEach((_, i) => {
     const el = $(`#${prefix}-${i}`);
     if (el && p.players[i]) el.value = p.players[i].address;
   }));
+  if ($("#pool-share")) $("#pool-share").onclick = () => shareText(
+    p.status === "settled"
+      ? `${nick(final[0])} won "${p.title}" (${gnot(pot)} pot) on Tavern Wagers 🍺`
+      : `Join "${p.title}" on Tavern Wagers 🍺 ${gnot(lock)} to get in.`);
   app.querySelectorAll("[data-do]").forEach((el) => el.onclick = () => {
     const d = el.dataset.do;
     if (d === "join") call("JoinPool", [id], lock);
@@ -668,6 +684,17 @@ async function pagePool(id) {
     if (d === "escalate") call("EscalatePool", [id]);
     if (d === "expire") call("ExpirePool", [id]);
   });
+}
+
+async function shareText(text) {
+  const full = `${text} ${location.href}`;
+  try {
+    if (navigator.share) { await navigator.share({ text: full }); return; }
+    await navigator.clipboard.writeText(full);
+    toast("Copied. Paste it in the group chat 🍺", "ok");
+  } catch (_) {
+    prompt("Copy this:", full);
+  }
 }
 
 function badges(m, rank) {
