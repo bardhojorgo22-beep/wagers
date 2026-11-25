@@ -11,6 +11,14 @@ const NETWORKS = {
     gnoweb: "https://onyx.testnets.gno.land",
     pkg: `gno.land/r/${REALM_OWNER}/tavernwagers/v4`,
   },
+  demo: {
+    label: "Demo (sample data)",
+    demo: true,
+    chainId: "",
+    rpc: "",
+    gnoweb: "https://onyx.testnets.gno.land",
+    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers/v4`,
+  },
   local: {
     label: "Local (gnodev)",
     chainId: "dev",
@@ -41,6 +49,7 @@ const app = $("#app");
 function net() { return NETWORKS[state.net]; }
 
 async function qeval(expr) {
+  if (net().demo) return window.DEMO.query(expr);
   const data = btoa(unescape(encodeURIComponent(`${net().pkg}.${expr}`)));
   const res = await fetch(net().rpc, {
     method: "POST",
@@ -64,6 +73,10 @@ async function qeval(expr) {
 }
 
 async function call(func, args, sendUgnot = 0) {
+  if (net().demo) {
+    toast("This is sample data, so nothing is sent. Switch to Testnet or Local in the top bar to play for real.");
+    return false;
+  }
   if (!state.account) {
     await connect();
     if (!state.account) return false;
@@ -107,6 +120,12 @@ function friendlyError(msg) {
 // Wallet
 
 async function connect() {
+  if (net().demo) {
+    state.account = window.DEMO.me;
+    renderTop();
+    route();
+    return;
+  }
   if (!window.adena) {
     toast("Install the Adena wallet extension first (adena.app)", "err");
     return;
@@ -133,7 +152,10 @@ async function connect() {
 
 function renderTop() {
   const btn = $("#connect");
-  btn.textContent = state.account ? short(state.account) : "Connect Adena";
+  btn.textContent = net().demo
+    ? (state.account ? "Viewing as Alice" : "View as Alice")
+    : state.account ? short(state.account) : "Connect Adena";
+  $("#demo-banner").hidden = !net().demo;
   btn.classList.toggle("ghost", !!state.account);
   $("#realm-link").href = `${net().gnoweb}/r/${REALM_OWNER}/tavernwagers/v4`;
 }
@@ -565,11 +587,17 @@ async function route() {
     else if (parts[0] === "pool" && parts[1]) await pagePool(parseInt(parts[1], 10));
     else await pageHome();
   } catch (e) {
+    if (e.message === "NOT_ENABLED" && !savedNet() && state.net === "onyx") {
+      switchNet("demo", false);
+      toast("The testnet version is waiting for approval, so you're seeing sample data.");
+      return;
+    }
     if (e.message === "NOT_ENABLED") {
       app.innerHTML = `<h1>Almost there 🍺</h1>
         <p class="lead">The realm is deployed on ${esc(net().label)}, but the network hasn't enabled it yet.
         New packages on this testnet wait for an approver. Try again later, or switch to Local.</p>
-        <p><button class="btn ghost" onclick="document.querySelector('#network').value='local';document.querySelector('#network').onchange()">Switch to Local</button></p>`;
+        <p class="actions"><button class="btn" onclick="switchNet('demo', true)">Explore with sample data</button>
+          <button class="btn ghost" onclick="switchNet('local', true)">Switch to Local</button></p>`;
     } else if (/not found/i.test(e.message)) {
       app.innerHTML = `<a class="back" href="#/">← Home</a><h1>Not found</h1>`;
     } else {
@@ -634,15 +662,19 @@ function toast(msg, kind = "") {
 const sel = $("#network");
 sel.innerHTML = Object.entries(NETWORKS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
 sel.value = state.net;
-sel.onchange = () => {
-  state.net = sel.value;
-  try { localStorage.setItem("tw-net", state.net); } catch (_) {}
-  state.account = null;
+function switchNet(key, remember) {
+  state.net = key;
+  sel.value = key;
+  if (remember) { try { localStorage.setItem("tw-net", key); } catch (_) {} }
+  state.account = key === "demo" ? window.DEMO.me : null;
   renderTop();
   route();
-};
+}
+window.switchNet = switchNet;
+sel.onchange = () => switchNet(sel.value, true);
 $("#connect").onclick = connect;
 window.addEventListener("hashchange", route);
+if (net().demo) state.account = window.DEMO.me;
 renderTop();
 
 // Reconnect silently after a refresh if the user connected before.
@@ -651,7 +683,7 @@ renderTop();
   try { was = localStorage.getItem("tw-connected") === "1"; } catch (_) {}
   // Adena injects itself shortly after page load.
   for (let i = 0; was && !window.adena && i < 20; i++) await new Promise((r) => setTimeout(r, 100));
-  if (was && window.adena) {
+  if (was && window.adena && !net().demo) {
     try {
       const acc = await window.adena.GetAccount();
       if (acc.status === "success") {
