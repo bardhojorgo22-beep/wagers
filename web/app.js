@@ -143,7 +143,9 @@ function renderTop() {
 
 async function pageHome() {
   const tables = await qeval("TablesJSON()");
-  const st = await qeval("StatsJSON()");
+  const st = await qeval("StatsJSON()").catch(() => ({
+    tables: tables.length, bets: tables.reduce((n, t) => n + t.bets, 0), settled: 0, liarsCaught: 0, biggestPot: 0, judgesPaid: 0,
+  }));
   const mine = state.account ? await qeval(`MyTablesJSON("${state.account}")`) : [];
 
   app.innerHTML = `
