@@ -49,7 +49,7 @@ Point at the ⚠️ banner.
 
 Open the realm on gnoweb (footer link "Realm on gnoweb").
 
-> "Everything also lives on gnoweb: the realm renders its own pages, and every action is a pre-filled transaction link. The realm has 15 tests, and every settlement test checks that coins out equal coins in."
+> "Everything also lives on gnoweb: the realm renders its own pages, and every action is a pre-filled transaction link. The realm has 17 tests, and every settlement test checks that coins out equal coins in."
 
 ## 2:35 · Close
 

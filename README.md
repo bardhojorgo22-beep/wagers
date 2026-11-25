@@ -144,7 +144,7 @@ bash scripts/demo-scenario.sh      # plays a full story: honest bet, a lie caugh
 
 ## Tests
 
-`wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, declines, stake limits, JSON views, page rendering, and group bets (agreed winner-takes-all, a disputed 60/40 split with a liar, validation and cancellation). Every settlement test checks that the coins paid out equal the coins paid in.
+`wagers_test.gno` covers an agreed result, a liar losing their bond, a draw where both players lied, an expired vote, a no-show escalation, cancellation and input validation, a table with no possible judges, nicknames, judges being fixed at accept time, declines, stake limits, JSON views, page rendering, and group bets (agreed winner-takes-all, a disputed 60/40 split with a liar, no-shows, escalation, expiry, validation and cancellation). Every settlement test checks that the coins paid out equal the coins paid in.
 
 ## Security notes
 
