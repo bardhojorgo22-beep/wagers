@@ -140,6 +140,7 @@ func CreateTable(cur realm, name string, nickname string) int {
 	name = strings.TrimSpace(name)
 	require(name != "", "table name required")
 	require(len(name) <= 64, "table name too long (max 64)")
+	require(printable(name), "table name has invalid characters")
 
 	tableSeq++
 	t := &Table{
@@ -192,6 +193,7 @@ func CreateBet(cur realm, tableID int, title string, opponentName string, stake 
 	title = strings.TrimSpace(title)
 	require(title != "", "bet title required")
 	require(len(title) <= 140, "bet title too long (max 140)")
+	require(printable(title), "bet title has invalid characters")
 	require(t.isMember(caller), "you are not a member of this table")
 	opponent := t.resolve(opponentName)
 	require(opponent != caller, "you can't bet against yourself")
@@ -597,6 +599,16 @@ func (b *Bet) countVotes(result string) int {
 		return false
 	})
 	return n
+}
+
+// printable rejects control characters (newlines, tabs, etc.).
+func printable(s string) bool {
+	for _, r := range s {
+		if r < 32 || r == 127 {
+			return false
+		}
+	}
+	return true
 }
 
 func normalizeResult(r string) string {

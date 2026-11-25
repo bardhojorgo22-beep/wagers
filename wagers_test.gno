@@ -385,20 +385,31 @@ func TestJudgesFixedAtAccept(cur realm, t *testing.T) {
 	uassert.Equal(t, "settled", GetBetStatus(bid))
 }
 
+func TestJSON(cur realm, t *testing.T) {
+	testing.IssueCoins(pkgAddr, chain.Coins{{"ugnot", 100_000_000}})
+	testing.SetRealm(testing.NewUserRealm(alice))
+	testing.SetOriginSend(nil)
+	tid := CreateTable(cross(cur), "JSON \"quoted\" table 🍺", "Alice")
+	AddMember(cross(cur), tid, bob, "Bob")
+	testing.SetOriginSend(chain.Coins{{"ugnot", stake + bond}})
+	bid := CreateBet(cross(cur), tid, "json bet", "Bob", stake)
+
+	tj := TableJSON(tid)
+	uassert.True(t, strings.Contains(tj, `"name":"JSON \"quoted\" table 🍺"`), "table name escaped: "+tj)
+	uassert.True(t, strings.Contains(tj, `"nick":"Bob"`), "members listed")
+	bj := BetJSON(bid)
+	uassert.True(t, strings.Contains(bj, `"status":"open"`), "bet status: "+bj)
+	uassert.True(t, strings.Contains(bj, `"stake":1000000`), "bet stake")
+	uassert.True(t, strings.Contains(MyTablesJSON(bob), `"id":`+itoa(tid)), "bob's tables")
+	uassert.Equal(t, "[]", MyTablesJSON(outside))
+
+	testing.SetOriginSend(nil)
+	uassert.AbortsWithMessage(t, cur, "table name has invalid characters", func() { CreateTable(cross(cur), "bad\nname", "x") })
+}
+
 func TestRender(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(Render(""), "How it works"), "home renders")
 	uassert.True(t, strings.Contains(Render("table/999"), "Table not found"), "missing table")
 	uassert.True(t, strings.Contains(Render("bet/999"), "Bet not found"), "missing bet")
 }
 
-func itoa(i int) string {
-	s := ""
-	if i == 0 {
-		return "0"
-	}
-	for i > 0 {
-		s = string(rune('0'+i%10)) + s
-		i /= 10
-	}
-	return s
-}

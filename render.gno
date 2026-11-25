@@ -154,7 +154,7 @@ func renderBet(b *Bet) string {
 		if loser == b.PlayerB {
 			other = b.PlayerA
 		}
-		sb.WriteString("[🔁 Run it back](" + call("CreateBet", "tableID", strconv.Itoa(t.ID),
+		sb.WriteString("[🔁 Run it back](" + callSend("CreateBet", strconv.FormatInt(b.Stake+b.Bond, 10)+"ugnot", "tableID", strconv.Itoa(t.ID),
 			"title", rematchTitle(b.Title), "opponentName", nameOrAddr(t, other),
 			"stake", strconv.FormatInt(b.Stake, 10)) + ") _(for " + plain(t, loser) + ")_\n\n")
 	}

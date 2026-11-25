@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tavern Wagers</title>
+  <meta name="description" content="Bet on anything with your friends. The money's locked upfront, neutral judges call it, and the winner gets paid automatically.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍺</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="#/">🍺 Tavern Wagers</a>
+    <div class="top-right">
+      <select id="network" title="Network"></select>
+      <button id="connect" class="btn">Connect Adena</button>
+    </div>
+  </header>
+
+  <main id="app"><p class="muted">Loading…</p></main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <footer class="foot">
+    Built on <a href="https://gno.land" target="_blank" rel="noopener">Gno.land</a> ·
+    <a id="realm-link" href="#" target="_blank" rel="noopener">Realm on gnoweb</a> ·
+    <a href="https://github.com/bardhojorgo22-beep/wagers" target="_blank" rel="noopener">Source</a>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

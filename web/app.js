@@ -1,0 +1,462 @@
+// Tavern Wagers web app: reads the realm over RPC (vm/qeval) and sends
+// transactions through the Adena wallet. No build step, no dependencies.
+
+const REALM_OWNER = "g1sgp0eyezdescdtzd32n2vdktazva4nyt9ppmcx";
+
+const NETWORKS = {
+  onyx: {
+    label: "Testnet (onyx-1)",
+    chainId: "onyx-1",
+    rpc: "https://rpc.onyx.testnets.gno.land:443",
+    gnoweb: "https://onyx.testnets.gno.land",
+    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers`,
+  },
+  local: {
+    label: "Local (gnodev)",
+    chainId: "dev",
+    rpc: "http://127.0.0.1:26657",
+    gnoweb: "http://localhost:8888",
+    pkg: `gno.land/r/${REALM_OWNER}/tavernwagers`,
+  },
+};
+
+const BOND_PCT = 10;
+const UGNOT = 1_000_000;
+
+function savedNet() {
+  try { return localStorage.getItem("tw-net"); } catch (_) { return null; }
+}
+
+const state = {
+  net: NETWORKS[savedNet()] ? savedNet() : "onyx",
+  account: null, // g1 address once connected
+};
+
+const $ = (sel) => document.querySelector(sel);
+const app = $("#app");
+
+// ---------------------------------------------------------------------------
+// Chain access
+
+function net() { return NETWORKS[state.net]; }
+
+async function qeval(expr) {
+  const data = btoa(unescape(encodeURIComponent(`${net().pkg}.${expr}`)));
+  const res = await fetch(net().rpc, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "abci_query", params: { path: "vm/qeval", data } }),
+  });
+  const json = await res.json();
+  const r = json?.result?.response;
+  if (!r) throw new Error("No response from the chain");
+  const err = r.ResponseBase?.Error;
+  const raw = r.ResponseBase?.Data ? decodeURIComponent(escape(atob(r.ResponseBase.Data))) : "";
+  if (err) {
+    const log = r.ResponseBase?.Log || "";
+    if (/not enabled|inert|approver/i.test(log + raw)) throw new Error("NOT_ENABLED");
+    throw new Error(friendlyError(log || JSON.stringify(err)));
+  }
+  // Data looks like: ("<go-quoted string>" string)\n\n
+  const m = raw.match(/^\((".*") string\)/s);
+  if (!m) throw new Error("Unexpected response: " + raw.slice(0, 120));
+  return JSON.parse(JSON.parse(m[1]));
+}
+
+async function call(func, args, sendUgnot = 0) {
+  if (!state.account) {
+    await connect();
+    if (!state.account) return false;
+  }
+  try {
+    toast("Confirm in Adena…");
+    const res = await window.adena.DoContract({
+      messages: [{
+        type: "/vm.m_call",
+        value: {
+          caller: state.account,
+          send: sendUgnot ? `${sendUgnot}ugnot` : "",
+          pkg_path: net().pkg,
+          func,
+          args: args.map(String),
+        },
+      }],
+      gasFee: 1_000_000,
+      gasWanted: 30_000_000,
+    });
+    if (res.status !== "success") {
+      toast(friendlyError(res.message || res.data?.message || "Transaction failed"), "err");
+      return false;
+    }
+    toast("Done ✓", "ok");
+    setTimeout(route, 1500);
+    return true;
+  } catch (e) {
+    toast(friendlyError(e.message || String(e)), "err");
+    return false;
+  }
+}
+
+function friendlyError(msg) {
+  // Panics from the realm come back wrapped in VM noise: keep the message.
+  const m = String(msg).match(/(?:panic|abort)[^:]*:\s*([^\n]+)/i);
+  return (m ? m[1] : String(msg)).slice(0, 200);
+}
+
+// ---------------------------------------------------------------------------
+// Wallet
+
+async function connect() {
+  if (!window.adena) {
+    toast("Install the Adena wallet extension first (adena.app)", "err");
+    return;
+  }
+  try {
+    await window.adena.AddEstablish("Tavern Wagers");
+    const acc = await window.adena.GetAccount();
+    if (acc.status !== "success") throw new Error(acc.message || "Could not read account");
+    state.account = acc.data.address;
+    const chain = acc.data.chainId;
+    if (chain !== net().chainId) {
+      if (state.net === "local") {
+        await window.adena.AddNetwork({ chainId: "dev", chainName: "Gnodev", rpcUrl: net().rpc });
+      }
+      await window.adena.SwitchNetwork(net().chainId);
+    }
+    renderTop();
+    route();
+  } catch (e) {
+    toast(friendlyError(e.message || String(e)), "err");
+  }
+}
+
+function renderTop() {
+  const btn = $("#connect");
+  btn.textContent = state.account ? short(state.account) : "Connect Adena";
+  btn.classList.toggle("ghost", !!state.account);
+  $("#realm-link").href = `${net().gnoweb}/r/${REALM_OWNER}/tavernwagers`;
+}
+
+// ---------------------------------------------------------------------------
+// Pages
+
+async function pageHome() {
+  const tables = await qeval("TablesJSON()");
+  const mine = state.account ? await qeval(`MyTablesJSON("${state.account}")`) : [];
+
+  app.innerHTML = `
+    <section class="hero">
+      <div>
+        <h1>Bet on anything with your friends.</h1>
+        <p class="lead">The money's locked upfront, neutral judges call it, and the winner gets paid automatically. No more "I'll pay you later."</p>
+        <div class="actions">
+          <button class="btn" id="new-table">➕ Open a table</button>
+          <a class="btn ghost" href="#how">How it works</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="stats">
+          <div><b>${tables.length}</b>tables</div>
+          <div><b>${tables.reduce((n, t) => n + t.bets, 0)}</b>bets</div>
+          <div><b>0%</b>house cut</div>
+        </div>
+        <p class="muted small">Every coin that goes in comes back out to players and judges.</p>
+      </div>
+    </section>
+
+    <div id="create-form"></div>
+
+    ${state.account ? `<h2>Your tables</h2>${mine.length ? tableGrid(mine) : `<p class="muted">You're not at any table yet. Open one, or ask a friend to add you.</p>`}` : ""}
+
+    <h2>All tables</h2>
+    ${tables.length ? tableGrid(tables) : `<p class="muted">No tables yet. Be the first.</p>`}
+
+    <h2 id="how">How it works</h2>
+    <div class="steps">
+      <div class="card step"><span class="n">1 · LOCK</span><b>Both players lock their stake</b><span>Plus a ${BOND_PCT}% honesty bond, before the game starts. Nobody holds the pot: the realm does.</span></div>
+      <div class="card step"><span class="n">2 · REPORT</span><b>Agree? Paid instantly.</b><span>Both players report the result. Same answer means instant payout and both bonds back.</span></div>
+      <div class="card step"><span class="n">3 · JUDGE</span><b>Disagree? Friends decide.</b><span>Everyone else at the table judges. A strict majority wins. The liar loses their bond and gets a 🚩.</span></div>
+    </div>`;
+
+  $("#new-table").onclick = () => {
+    $("#create-form").innerHTML = `
+      <div class="card">
+        <div class="row">
+          <div class="field"><label>Table name</label><input id="t-name" placeholder="Friday Chess Club" maxlength="64"></div>
+          <div class="field"><label>Your nickname</label><input id="t-nick" placeholder="Alice" maxlength="24"></div>
+          <button class="btn" id="t-go">Open table</button>
+        </div>
+      </div>`;
+    $("#t-go").onclick = () => call("CreateTable", [$("#t-name").value, $("#t-nick").value]);
+  };
+}
+
+function tableGrid(list) {
+  return `<div class="grid">${list.map((t) => `
+    <a class="card table-card" href="#/table/${t.id}">
+      <h3>🍺 ${esc(t.name)}</h3>
+      <div class="muted small">${t.members} members · ${t.bets} bets · owner ${esc(t.ownerNick || short(t.owner))}</div>
+    </a>`).join("")}</div>`;
+}
+
+async function pageTable(id) {
+  const t = await qeval(`TableJSON(${id})`);
+  const nick = nicker(t);
+  const me = state.account;
+  const isMember = me && t.members.some((m) => m.address === me);
+  const isOwner = me === t.owner;
+  const ranked = [...t.members].sort((a, b) => b.net - a.net);
+
+  app.innerHTML = `
+    <a class="back" href="#/">← All tables</a>
+    <h1>🍺 ${esc(t.name)}</h1>
+    <p class="muted">Owner ${esc(nick(t.owner))} · ${t.members.length} members</p>
+
+    ${isMember ? `
+    <div class="card">
+      <b>🎲 New bet</b>
+      <div class="row" style="margin-top:10px">
+        <div class="field"><label>What's the bet?</label><input id="b-title" placeholder="I beat you at chess, 10 min blitz" maxlength="140"></div>
+        <div class="field" style="max-width:200px"><label>Against</label>
+          <select id="b-opp">${t.members.filter((m) => m.address !== me).map((m) => `<option value="${m.address}">${esc(m.nick || short(m.address))}</option>`).join("")}</select></div>
+        <div class="field" style="max-width:140px"><label>Stake (GNOT)</label><input id="b-stake" type="number" min="0.01" step="0.01" value="1"></div>
+        <button class="btn" id="b-go">Lock & challenge</button>
+      </div>
+      <p class="muted small" id="b-total"></p>
+    </div>` : me ? `<p class="hint">You're not at this table. Ask ${esc(nick(t.owner))} to add you.</p>` : `<p class="hint">Connect your wallet to bet at this table.</p>`}
+
+    <h2>🏆 Leaderboard</h2>
+    <div class="card"><table>
+      <tr><th>#</th><th>Member</th><th class="num">Net</th><th>W-L-D</th><th>Disputes lost</th><th>Judged</th></tr>
+      ${ranked.map((m, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td><b>${esc(m.nick || short(m.address))}</b>${m.address === me ? ` <span class="muted small">(you)</span>` : ""}</td>
+          <td class="num ${m.net > 0 ? "pos" : m.net < 0 ? "neg" : ""}">${gnot(m.net, true)}</td>
+          <td>${m.wins}-${m.losses}-${m.draws}</td>
+          <td>${m.disputesLost ? `<span class="flag">🚩 ${m.disputesLost}</span>` : "0"}</td>
+          <td>${m.judged}</td>
+        </tr>`).join("")}
+    </table></div>
+
+    <h2>🎲 Bets</h2>
+    ${t.bets.length ? `<div class="card"><table>
+      <tr><th>Bet</th><th>Players</th><th class="num">Stake</th><th>Status</th></tr>
+      ${t.bets.map((b) => `
+        <tr>
+          <td><a href="#/bet/${b.id}">${esc(b.title)}</a></td>
+          <td>${esc(nick(b.playerA))} vs ${esc(nick(b.playerB))}</td>
+          <td class="num">${gnot(b.stake)}</td>
+          <td>${statusPill(b, nick)}</td>
+        </tr>`).join("")}
+    </table></div>` : `<p class="muted">No bets yet.</p>`}
+
+    ${isOwner ? `
+    <h2>👋 Add a member</h2>
+    <div class="card"><div class="row">
+      <div class="field"><label>Their g1 address</label><input id="m-addr" placeholder="g1..."></div>
+      <div class="field" style="max-width:220px"><label>Nickname</label><input id="m-nick" placeholder="Bob" maxlength="24"></div>
+      <button class="btn" id="m-go">Add</button>
+    </div></div>` : ""}
+
+    ${isMember ? `
+    <h2>✏️ Your nickname</h2>
+    <div class="card"><div class="row">
+      <div class="field"><input id="n-nick" value="${esc(nick(me) === short(me) ? "" : nick(me))}" maxlength="24"></div>
+      <button class="btn ghost" id="n-go">Save</button>
+    </div></div>` : ""}`;
+
+  if (isMember) {
+    const total = () => {
+      const s = toUgnot($("#b-stake").value);
+      $("#b-total").textContent = s ? `You'll lock ${gnot(s + Math.floor(s / BOND_PCT))} (stake + ${BOND_PCT}% bond). Your opponent locks the same when they accept.` : "";
+    };
+    $("#b-stake").oninput = total;
+    total();
+    $("#b-go").onclick = () => {
+      const s = toUgnot($("#b-stake").value);
+      if (!s) return toast("Enter a stake", "err");
+      call("CreateBet", [id, $("#b-title").value, $("#b-opp").value, s], s + Math.floor(s / BOND_PCT));
+    };
+    $("#n-go").onclick = () => call("SetNickname", [id, $("#n-nick").value]);
+  }
+  if (isOwner) $("#m-go").onclick = () => call("AddMember", [id, $("#m-addr").value.trim(), $("#m-nick").value]);
+}
+
+async function pageBet(id) {
+  const b = await qeval(`BetJSON(${id})`);
+  const t = await qeval(`TableJSON(${b.tableId})`);
+  const nick = nicker(t);
+  const me = state.account;
+  const A = nick(b.playerA), B = nick(b.playerB);
+  const label = (r) => r === "a" ? `${A} won` : r === "b" ? `${B} won` : r === "draw" ? "Draw" : "—";
+  const lock = b.stake + b.bond;
+  const isA = me === b.playerA, isB = me === b.playerB;
+  const myReport = isA ? b.reportA : isB ? b.reportB : "";
+  const judge = b.judges.find((j) => j.address === me);
+  const votes = { a: 0, b: 0, draw: 0 };
+  b.judges.forEach((j) => { if (j.vote) votes[j.vote]++; });
+  const need = Math.floor(b.judges.length / 2) + 1;
+
+  let actions = "";
+  if (b.status === "open") {
+    actions = `<div class="hint">👉 Waiting for <b>${esc(B)}</b> to accept and lock ${gnot(lock)}.</div>
+      <div class="actions">
+        ${isB ? `<button class="btn green" data-do="accept">✅ Accept & lock ${gnot(lock)}</button>` : ""}
+        ${isA ? `<button class="btn ghost" data-do="cancel">Cancel & refund</button>` : ""}
+      </div>`;
+  } else if (b.status === "live") {
+    const waiting = !b.reportA && !b.reportB ? `Game on! After the game, both players report the result.` :
+      !b.reportA ? `Waiting for <b>${esc(A)}</b> to report.` : `Waiting for <b>${esc(B)}</b> to report.`;
+    actions = `<div class="hint">👉 ${waiting}</div>`;
+    if ((isA || isB) && !myReport) {
+      actions += `<div class="actions">
+        <button class="btn" data-report="a">${esc(A)} won</button>
+        <button class="btn" data-report="b">${esc(B)} won</button>
+        <button class="btn ghost" data-report="draw">Draw</button></div>`;
+    }
+    if ((isA || isB) && myReport && b.firstReportAt) {
+      const due = new Date(Date.parse(b.firstReportAt) + 24 * 3600 * 1000);
+      actions += `<p class="muted small">If the other player hasn't reported by ${due.toLocaleString()}, you can
+        <button class="btn sm ghost" data-do="escalate">send it to the judges</button></p>`;
+    }
+  } else if (b.status === "disputed") {
+    actions = `<div class="hint">⚖️ <b>${esc(A)}</b> and <b>${esc(B)}</b> disagree. The judges decide: ${need} of ${b.judges.length} votes needed.
+      Voting closes ${new Date(b.deadline).toLocaleString()}.<br>
+      Votes: ${esc(A)} won <b>${votes.a}</b> · ${esc(B)} won <b>${votes.b}</b> · draw <b>${votes.draw}</b></div>`;
+    if (judge && !judge.vote) {
+      actions += `<div class="actions">
+        <button class="btn" data-vote="a">Vote ${esc(A)} won</button>
+        <button class="btn" data-vote="b">Vote ${esc(B)} won</button>
+        <button class="btn ghost" data-vote="draw">Vote draw</button></div>`;
+    }
+    if (Date.now() > Date.parse(b.deadline)) {
+      actions += `<div class="actions"><button class="btn ghost" data-do="expire">No majority: refund everyone</button></div>`;
+    }
+  }
+
+  const winA = b.status === "settled" && b.final === "a";
+  const winB = b.status === "settled" && b.final === "b";
+
+  app.innerHTML = `
+    <a class="back" href="#/table/${t.id}">← ${esc(t.name)}</a>
+    <h1>🎲 ${esc(b.title)}</h1>
+    <p>${statusPill(b, nick)}</p>
+
+    <div class="versus">
+      <div class="player ${winA ? "win" : ""}"><div class="name">${esc(A)}</div><div class="muted small">reported: ${label(b.reportA)}</div></div>
+      <div class="vs">VS</div>
+      <div class="player ${winB ? "win" : ""}"><div class="name">${esc(B)}</div><div class="muted small">reported: ${label(b.reportB)}</div></div>
+    </div>
+    <p class="muted" style="text-align:center">Stake ${gnot(b.stake)} each · bond ${gnot(b.bond)} each · pot <b style="color:var(--text)">${gnot(2 * b.stake)}</b></p>
+
+    ${actions}
+
+    ${b.judges.length ? `<h2>⚖️ Judges</h2>
+      <p class="muted small">Fixed when the bet was accepted. Only used if the players disagree.</p>
+      <div class="card"><table>${b.judges.map((j) => `<tr><td><b>${esc(nick(j.address))}</b></td><td>${j.vote ? label(j.vote) : `<span class="muted">not voted</span>`}</td></tr>`).join("")}</table></div>` : ""}
+
+    ${b.payouts.length ? `<h2>💸 Payouts</h2>
+      <div class="card"><table>
+        <tr><th>To</th><th class="num">Amount</th><th>Why</th></tr>
+        ${b.payouts.map((p) => `<tr><td><b>${esc(nick(p.to))}</b></td><td class="num">${gnot(p.amount)}</td><td class="muted">${esc(p.why)}</td></tr>`).join("")}
+      </table></div>` : ""}`;
+
+  app.querySelectorAll("[data-report]").forEach((el) => el.onclick = () => call("Report", [id, el.dataset.report]));
+  app.querySelectorAll("[data-vote]").forEach((el) => el.onclick = () => call("Vote", [id, el.dataset.vote]));
+  app.querySelectorAll("[data-do]").forEach((el) => el.onclick = () => {
+    const d = el.dataset.do;
+    if (d === "accept") call("AcceptBet", [id], lock);
+    if (d === "cancel") call("CancelBet", [id]);
+    if (d === "escalate") call("Escalate", [id]);
+    if (d === "expire") call("ExpireDispute", [id]);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Router
+
+async function route() {
+  const parts = location.hash.replace(/^#\/?/, "").split("/");
+  try {
+    if (parts[0] === "table" && parts[1]) await pageTable(parseInt(parts[1], 10));
+    else if (parts[0] === "bet" && parts[1]) await pageBet(parseInt(parts[1], 10));
+    else await pageHome();
+  } catch (e) {
+    if (e.message === "NOT_ENABLED") {
+      app.innerHTML = `<h1>Almost there 🍺</h1>
+        <p class="lead">The realm is deployed on ${esc(net().label)}, but the network hasn't enabled it yet.
+        New packages on this testnet wait for an approver. Try again later, or switch to Local.</p>`;
+    } else if (/not found/i.test(e.message)) {
+      app.innerHTML = `<a class="back" href="#/">← Home</a><h1>Not found</h1>`;
+    } else {
+      app.innerHTML = `<h1>Can't reach the chain</h1><p class="muted">${esc(e.message)}</p>
+        <p class="muted small">Network: ${esc(net().label)} (${esc(net().rpc)})</p>`;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+
+function nicker(t) {
+  const names = Object.fromEntries(t.members.map((m) => [m.address, m.nick]));
+  return (addr) => names[addr] || short(addr);
+}
+
+function statusPill(b, nick) {
+  const text = {
+    open: `🟡 waiting for ${nick(b.playerB)}`,
+    live: "🟢 live",
+    disputed: "⚖️ judges voting",
+    settled: `✅ ${b.final === "a" ? nick(b.playerA) + " won" : b.final === "b" ? nick(b.playerB) + " won" : "draw"}`,
+    cancelled: "❌ cancelled",
+    refunded: "↩️ refunded",
+  }[b.status] || b.status;
+  return `<span class="pill ${b.status}">${esc(text)}</span>`;
+}
+
+function gnot(u, signed = false) {
+  const sign = u < 0 ? "-" : signed && u > 0 ? "+" : "";
+  const v = Math.abs(u) / UGNOT;
+  return `${sign}${v.toLocaleString(undefined, { maximumFractionDigits: 6 })} GNOT`;
+}
+
+function toUgnot(v) {
+  const n = Math.round(parseFloat(v) * UGNOT);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function short(a) { return a ? `${a.slice(0, 7)}…${a.slice(-4)}` : ""; }
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+let toastTimer;
+function toast(msg, kind = "") {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.className = `toast ${kind}`;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, kind === "err" ? 7000 : 3500);
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+
+const sel = $("#network");
+sel.innerHTML = Object.entries(NETWORKS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
+sel.value = state.net;
+sel.onchange = () => {
+  state.net = sel.value;
+  try { localStorage.setItem("tw-net", state.net); } catch (_) {}
+  state.account = null;
+  renderTop();
+  route();
+};
+$("#connect").onclick = connect;
+window.addEventListener("hashchange", route);
+renderTop();
+route();

@@ -86,6 +86,16 @@ Pages: `:` (home), `:table/<id>`, `:bet/<id>`.
 
 Onyx parks new packages until its package approver enables them, so the page may show "Not Yet Enabled" for a while after deploying.
 
+## Web app
+
+`web/` is a no-build web app (plain HTML/CSS/JS) on top of the realm: it reads tables and bets through the realm's JSON views (`TablesJSON`, `MyTablesJSON`, `TableJSON`, `BetJSON`, queried with `vm/qeval`) and sends every action through the [Adena](https://adena.app) wallet. Players get a bet form with an opponent picker and the exact amount to lock, one-click accept/report/vote buttons that only show when it's your move, and a head-to-head "versus" view of each bet.
+
+```sh
+python3 -m http.server 8080 -d web   # then open http://localhost:8080
+```
+
+Pick **Testnet** or **Local (gnodev)** in the top bar. The gnoweb pages work on their own too: every action there is a pre-filled transaction link.
+
 ## Run it locally
 
 Requires the Gno toolchain v1.8.0 (`gno`, `gnokey`, `gnodev`).
