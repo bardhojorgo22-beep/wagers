@@ -289,6 +289,19 @@ func renderPool(p *Pool) string {
 		sb.WriteString("voting closes " + p.Deadline.UTC().Format(time.RFC822) + ".\n")
 	}
 
+	if p.Status == StatusOpen {
+		sb.WriteString("\n### ⚖️ Judges once everyone joins\n\n")
+		n := 0
+		for _, m := range t.Members {
+			if !containsAddr(p.Players, m) {
+				sb.WriteString("- " + who(t, m) + "\n")
+				n++
+			}
+		}
+		if n == 0 {
+			sb.WriteString("_Nobody is left to judge: a disagreement would be refunded._\n")
+		}
+	}
 	if len(p.Judges) > 0 {
 		sb.WriteString("\n### ⚖️ Judges\n\n_The table members who didn't play. Only used if players disagree._\n\n")
 		for _, j := range p.Judges {

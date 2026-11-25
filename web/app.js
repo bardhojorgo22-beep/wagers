@@ -555,6 +555,13 @@ async function pagePool(id) {
         <td class="small">${rankText(x.report)}</td></tr>`).join("")}
     </table></div>
 
+    ${p.status === "open" ? `<h2>⚖️ Judges once everyone joins</h2>
+      <div class="card">${(() => {
+        const j = t.members.filter((m) => !p.players.some((x) => x.address === m.address));
+        return j.length ? `<table>${j.map((m) => `<tr><td><b>${esc(nick(m.address))}</b></td></tr>`).join("")}</table>`
+          : `<p class="muted">Nobody is left to judge: a disagreement would be refunded.</p>`;
+      })()}</div>` : ""}
+
     ${p.judges.length ? `<h2>⚖️ Judges</h2>
       <p class="muted small">The table members who didn't play. Only used if players disagree.</p>
       <div class="card"><table>${p.judges.map((j) => `<tr><td><b>${esc(nick(j.address))}</b></td><td class="small">${j.vote ? rankText(j.vote) : `<span class="muted">not voted</span>`}</td></tr>`).join("")}</table></div>` : ""}
