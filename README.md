@@ -167,6 +167,9 @@ bash scripts/testnet-demo.sh       # funds the demo accounts from your key, then
 
 ## Security notes
 
+The full threat model (attack → mitigation → what's left) and the payout math are in [docs/design.md](docs/design.md).
+
+
 - **Coins in = coins out.** Every settlement path (agreed, disputed, draw, refund, cancel, decline) is tested to pay out exactly what was locked; rounding dust goes to a named recipient, never stays in the realm.
 - **Only real users can lock money.** Every function that reads the sent coins checks `IsUserCall()`, so another realm or a `maketx run` script can't fake a deposit.
 - **The sent amount must be exact** (stake + 10% bond), in `ugnot` only.
