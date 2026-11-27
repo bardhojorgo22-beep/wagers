@@ -20,8 +20,12 @@ for n in demo-alice demo-bob demo-judge1 demo-judge2 demo-judge3; do
   addr=$(gnokey list | grep " $n (local)" | sed -E 's/.*addr: (g1[0-9a-z]+).*/\1/')
   [ -n "$addr" ] || { echo "missing key $n: run scripts/demo-keys.sh first"; exit 1; }
   echo ">> sending $EACH to $n ($addr)"
-  echo "$PW" | gnokey maketx send -to "$addr" -send "$EACH" -gas-fee 100000ugnot -gas-wanted 2000000 \
-    -broadcast -chainid "$CHAIN" -remote "$REMOTE" -insecure-password-stdin "$FROM" | grep -E "OK!|Error|Data:" || true
+  out=$(echo "$PW" | gnokey maketx send -to "$addr" -send "$EACH" -gas-fee 100000ugnot -gas-wanted 2000000 \
+    -broadcast -chainid "$CHAIN" -remote "$REMOTE" -insecure-password-stdin "$FROM" 2>&1 || true)
+  if echo "$out" | grep -q "OK!"; then echo "   ok"; else
+    echo "$out" | grep -E "Data:" || echo "$out" | tail -5
+    echo "Funding failed (wrong password or not enough GNOT in main). Stopping."; exit 1
+  fi
 done
 
 REMOTE="$REMOTE" CHAIN="$CHAIN" STAKE=100000 GASFEE=300000ugnot GASWANTED=15000000 bash scripts/demo-scenario.sh
