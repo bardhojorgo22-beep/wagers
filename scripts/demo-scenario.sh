@@ -28,8 +28,11 @@ call() { # call <key> <func> [send] -- args...
   echo ">> $key: $fn $*"
   echo demo | gnokey maketx call -pkgpath "$PKG" -func "$fn" "${args[@]}" \
     ${send:+-send "$send"} -gas-fee "$GASFEE" -gas-wanted "$GASWANTED" \
-    -broadcast -chainid "$CHAIN" -remote "$REMOTE" -insecure-password-stdin "$key" \
-    | grep -E "OK!|Error|Data:" || true
+    -broadcast -chainid "$CHAIN" -remote "$REMOTE" -insecure-password-stdin "$key" 2>&1 \
+    | grep -E "OK!|^Data:" | head -1 | tee /tmp/tw-last || true
+  if grep -q "insufficient" /tmp/tw-last 2>/dev/null; then
+    echo "$key ran out of GNOT. Top it up (re-run the script) and try again."; exit 1
+  fi
 }
 
 URL="$REMOTE"; [[ "$URL" == http* ]] || URL="http://$URL"
@@ -41,7 +44,8 @@ fi
 ALICE=$(addr demo-alice); BOB=$(addr demo-bob)
 J1=$(addr demo-judge1); J2=$(addr demo-judge2); J3=$(addr demo-judge3)
 
-call demo-alice CreateTable "" "Friday Chess Club" "Alice"
+if [ "${SKIP_TABLE:-0}" = 1 ]; then echo ">> table 1 already exists, skipping CreateTable"
+else call demo-alice CreateTable "" "Friday Chess Club" "Alice"; fi
 call demo-alice AddMember "" 1 "$BOB" "Bob"
 call demo-alice AddMember "" 1 "$J1" "Marco"
 call demo-alice AddMember "" 1 "$J2" "Sara"
